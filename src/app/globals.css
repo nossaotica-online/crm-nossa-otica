@@ -1,0 +1,377 @@
+/* ============================================================
+   CRM NOSSA ÓTICA — Design System & Global Styles
+   Tema: 60% Preto, 30% Branco, 10% Dourado-champagne
+   Baseado na referência visual fornecida (UX Premium)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* ---- Colors: 60% Black (Backgrounds) ---- */
+  --bg-primary: #0c0c0e;     /* Fundo principal ultra-escuro do Behance */
+  --bg-secondary: #131316;   /* Fundo da sidebar e cabeçalhos */
+  --bg-tertiary: #19191f;    /* Fundo de inputs/hover */
+  --bg-card: #16161b;        /* Fundo dos cards */
+  --bg-card-hover: #1e1e24;
+  
+  /* ---- Colors: 30% White (Texts, Borders) ---- */
+  --text-primary: #ffffff;
+  --text-secondary: #8e8e93;  /* Texto cinza do mockup */
+  --text-muted: #545456;      /* Texto escuro silenciado */
+  --glass-border: rgba(255, 255, 255, 0.04);
+  --glass-border-strong: rgba(255, 255, 255, 0.1);
+  
+  /* ---- Colors: 10% Gold (Accents) ---- */
+  --accent-primary: #c9a96e;  /* Dourado-champagne Cobalto do Behance */
+  --accent-secondary: #d8bd8a;
+  --accent-subtle: rgba(201, 169, 110, 0.1);
+  --accent-cobalt: #c9a96e;   /* Dourado-champagne Cobalto principal */
+  --accent-cobalt-light: #ead7b1;
+  
+  /* ---- Status Colors ---- */
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #ef4444;
+  --status-info: #3b82f6;
+
+  /* ---- Glow / Shadows ---- */
+  --glow-gold: 0 4px 20px rgba(201, 169, 110, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.8);
+
+  /* ---- Layout & Spacing ---- */
+  --font-family: 'Inter', sans-serif;
+  --sidebar-width: 250px;
+  --header-height: 70px;
+  
+  --radius-sm: 6px;
+  --radius-md: 16px;          /* Cards com cantos bem arredondados como no mockup */
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+}
+
+/* ============================================================
+   Resets
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.2px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 50;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+}
+
+/* ============================================================
+   Components
+   ============================================================ */
+.glass-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--glass-border-strong);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: var(--radius-full); /* Botões arredondados tipo pílula do Behance */
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: #fff;
+  box-shadow: var(--glow-gold);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-secondary);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-card-hover);
+}
+
+.input {
+  width: 100%;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--accent-primary);
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.badge-gold {
+  background-color: var(--accent-subtle);
+  color: var(--accent-primary);
+}
+
+.badge-green {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: var(--status-success);
+}
+
+.badge-yellow {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--status-warning);
+}
+
+/* ============================================================
+   Grid Utilities
+   ============================================================ */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+
+/* ---- Table ---- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  text-align: left;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--glass-border);
+}
+.table td {
+  padding: 16px 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+.table tr:hover td {
+  background-color: rgba(255,255,255,0.02);
+}
+
+/* Auth Layout */
+.auth-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   TEMA CLARO (LIGHT MODE) OVERRIDES
+   ============================================================ */
+body.light-mode {
+  --bg-primary: #f4f5f8;       /* Fundo principal cinza claro */
+  --bg-secondary: #ffffff;     /* Sidebar e cabeçalhos em branco puro */
+  --bg-tertiary: #f0f2f5;      /* Inputs e fundos hover claros */
+  --bg-card: #ffffff;          /* Cards em branco puro */
+  --bg-card-hover: #f9f9fb;
+  
+  --text-primary: #121214;     /* Texto preto */
+  --text-secondary: #636366;   /* Texto secundário cinza */
+  --text-muted: #8e8e93;       /* Texto silenciado */
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border-strong: rgba(0, 0, 0, 0.12);
+  
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Forçar substituição global para textos brancos e fundos escuros */
+body.light-mode * {
+  --white-override: var(--text-primary);
+  --card-override: var(--bg-card);
+}
+
+/* Forçar substituição de estilos inline escuros no modo claro */
+body.light-mode h1,
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode h4,
+body.light-mode h5,
+body.light-mode h6,
+body.light-mode th,
+body.light-mode td strong,
+body.light-mode .table td div,
+body.light-mode .table td span {
+  color: var(--text-primary) !important;
+}
+
+body.light-mode [style*="color: white"],
+body.light-mode [style*="color:white"],
+body.light-mode [style*="color: #ffffff"],
+body.light-mode [style*="color:#ffffff"],
+body.light-mode [style*="color: rgb(255, 255, 255)"],
+body.light-mode [style*="color:rgb(255, 255, 255)"],
+body.light-mode text[fill="#ffffff"] {
+  color: var(--text-primary) !important;
+  fill: var(--text-primary) !important;
+}
+
+body.light-mode [style*="background: #16161d"],
+body.light-mode [style*="background:#16161d"],
+body.light-mode [style*="background: #16161b"],
+body.light-mode [style*="background:#16161b"],
+body.light-mode [style*="background: #1c1c24"],
+body.light-mode [style*="background:#1c1c24"],
+body.light-mode [style*="background: #101014"],
+body.light-mode [style*="background: rgba(255, 255, 255, 0.015)"],
+body.light-mode [style*="background: rgba(255,255,255,0.015)"],
+body.light-mode [style*="background: rgba(255, 255, 255, 0.02)"],
+body.light-mode [style*="background: rgba(255,255,255,0.02)"] {
+  background: var(--bg-card) !important;
+}
+
+body.light-mode .glass-card,
+body.light-mode [style*="background: var(--bg-secondary)"] {
+  background-color: var(--bg-card) !important;
+  border-color: var(--glass-border) !important;
+}
+
+body.light-mode [style*="background: var(--bg-tertiary)"] {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--glass-border) !important;
+}
+
+body.light-mode select,
+body.light-mode input,
+body.light-mode textarea {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--glass-border) !important;
+}
+
+body.light-mode select option {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+body.light-mode [style*="color: rgba(255, 255, 255, 0.4)"],
+body.light-mode [style*="color: rgba(255,255,255,0.4)"],
+body.light-mode [style*="color: rgba(255, 255, 255, 0.5)"],
+body.light-mode [style*="color: rgba(255,255,255,0.5)"] {
+  color: var(--text-secondary) !important;
+}
+
+/* Force light mode text for anything that slipped through */
+body.light-mode span[style*="color: white"],
+body.light-mode div[style*="color: white"] {
+  color: var(--text-primary) !important;
+}
+
+/* Fix SVG reference lines */
+body.light-mode line[stroke*="255"],
+body.light-mode line[stroke*="rgba(255"] {
+  stroke: rgba(0,0,0,0.1) !important;
+}
+
+/* Logo Nossa Ótica in Light Mode */
+body.light-mode .logo-text {
+  color: var(--text-primary) !important;
+}
+body.light-mode .logo-part-1 {
+  fill: #333333 !important; /* Branco vira escuro */
+}
+body.light-mode .logo-part-2 {
+  fill: #999999 !important;
+}
+body.light-mode .logo-part-3 {
+  fill: #666666 !important;
+}
+
+body.light-mode hr {
+  background: var(--glass-border) !important;
+}
+
+body.light-mode button[style*="background: #212128"],
+body.light-mode button[style*="background: '#212128'"] {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Invert the white logo in light mode */
+body.light-mode img[src="/logo.png"] {
+  filter: brightness(0) saturate(100%) invert(10%) sepia(5%) saturate(10%) hue-rotate(314deg) brightness(97%) contrast(89%); /* Dark gray/black */
+}
