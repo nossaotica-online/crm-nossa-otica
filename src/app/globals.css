@@ -372,6 +372,6 @@ body.light-mode button[style*="background: '#212128'"] {
 }
 
 /* Invert the white logo in light mode */
-body.light-mode img[src="/logo.png"] {
+body.light-mode img[src$="/logo.png"] {
   filter: brightness(0) saturate(100%) invert(10%) sepia(5%) saturate(10%) hue-rotate(314deg) brightness(97%) contrast(89%); /* Dark gray/black */
 }

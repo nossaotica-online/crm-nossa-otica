@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import styles from './login.module.css';
 
 export default function LoginPage() {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function LoginPage() {
       <div className={styles.glowOrb}></div>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <img src="/logo.png" alt="Logo Nossa Ótica" style={{ width: '260px', maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto 8px' }} />
+          <img src={`${basePath}/logo.png`} alt="Logo Nossa Ótica" style={{ width: '260px', maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto 8px' }} />
         </div>
         
         <form onSubmit={handleLogin} className={styles.form}>

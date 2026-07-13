@@ -80,6 +80,7 @@ export default function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const pathname = usePathname();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -161,7 +162,7 @@ export default function DashboardLayout({
             overflow: 'hidden',
             marginBottom: '8px'
           }}>
-            <img src="/logo.png" alt="Logo Nossa Ótica" style={{ width: '190px', height: '190px', objectFit: 'contain', flexShrink: 0 }} className="logo-img" />
+            <img src={`${basePath}/logo.png`} alt="Logo Nossa Ótica" style={{ width: '190px', height: '190px', objectFit: 'contain', flexShrink: 0 }} className="logo-img" />
           </div>
           
           {/* User Profile Card AT THE TOP (Daniel Wood / Sandro Style) */}

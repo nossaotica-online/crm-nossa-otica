@@ -2,13 +2,15 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { CRMProvider } from '@/context/CRMContext';
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const metadata: Metadata = {
   title: 'CRM Nossa Ótica',
   description: 'Gestão de clientes, atendimentos e vendas da Nossa Ótica',
   icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    icon: `${basePath}/logo.png`,
+    shortcut: `${basePath}/logo.png`,
+    apple: `${basePath}/logo.png`,
   }
 };
 
