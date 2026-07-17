@@ -5,8 +5,15 @@ import { useCRM } from '@/context/CRMContext';
 import { WEEKDAY_SHORT, MONTH_LABELS } from '@/lib/constants';
 import { Booking, BookingStatus, BookingTipo, Task } from '@/types';
 
+const formatPhone = (value?: string | null) => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return value || '';
+};
+
 export default function CalendarPage() {
-  const { bookings, leads, team, addBooking, updateBookingStatus, deleteBooking, tasks, addTask, updateTaskStatus, deleteTask } = useCRM();
+  const { bookings, clients, team, addBooking, updateBookingStatus, deleteBooking, tasks, addTask, updateTaskStatus, deleteTask } = useCRM();
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   
   const [isMounted, setIsMounted] = useState(false);
@@ -20,7 +27,7 @@ export default function CalendarPage() {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
 
   // New Booking Form State
-  const [newLeadId, setNewLeadId] = useState('');
+  const [newClientId, setNewClientId] = useState('');
   const [newConsultorId, setNewConsultorId] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newTime, setNewTime] = useState('10:00');
@@ -29,7 +36,7 @@ export default function CalendarPage() {
   const [newNotes, setNewNotes] = useState('');
 
   // New Task Form State
-  const [newTaskLeadId, setNewTaskLeadId] = useState('');
+  const [newTaskClientId, setNewTaskClientId] = useState('');
   const [newTaskResponsavelId, setNewTaskResponsavelId] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('WhatsApp');
   const [newTaskCustomTitle, setNewTaskCustomTitle] = useState('');
@@ -49,10 +56,11 @@ export default function CalendarPage() {
   // Get active bookings for the selected date
   const selectedDateBookings = bookings.filter(b => b.data === selectedDate);
   const selectedDateTasks = tasks ? tasks.filter(t => t.data === selectedDate) : [];
+  const activeClients = clients.filter(c => c.status === 'active');
 
   const handleCreateBooking = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLeadId) return;
+    if (!newClientId) return;
 
     // Calculate end time (duration 30 mins)
     const [hours, minutes] = newTime.split(':').map(Number);
@@ -63,7 +71,7 @@ export default function CalendarPage() {
     const newEndTime = `${formattedEndHours}:${formattedEndMinutes}`;
 
     addBooking({
-      lead_id: newLeadId,
+      client_id: newClientId,
       consultor_id: newConsultorId || (team.length > 0 ? team[0].id : ''),
       data: newDate,
       horario_inicio: newTime,
@@ -75,7 +83,7 @@ export default function CalendarPage() {
     });
 
     // Reset and Close
-    setNewLeadId('');
+    setNewClientId('');
     setNewConsultorId('');
     setNewDate(new Date().toISOString().split('T')[0]);
     setNewTime('10:00');
@@ -90,7 +98,7 @@ export default function CalendarPage() {
     if (!finalTitle.trim()) return;
 
     addTask({
-      lead_id: newTaskLeadId || null,
+      client_id: newTaskClientId || null,
       responsavel_id: newTaskResponsavelId || (team.length > 0 ? team[0].id : null),
       data: newTaskDate,
       titulo: finalTitle,
@@ -99,7 +107,7 @@ export default function CalendarPage() {
     });
 
     // Reset and Close
-    setNewTaskLeadId('');
+    setNewTaskClientId('');
     setNewTaskResponsavelId('');
     setNewTaskTitle('WhatsApp');
     setNewTaskCustomTitle('');
@@ -359,7 +367,7 @@ export default function CalendarPage() {
             {activeTab === 'calls' ? (
               <>
                 {selectedDateBookings.map((booking) => {
-                  const lead = leads.find(l => l.id === booking.lead_id);
+                  const client = clients.find(c => c.id === booking.client_id);
                   const consultor = team.find(t => t.id === booking.consultor_id);
                   
                   // Status badges
@@ -403,11 +411,11 @@ export default function CalendarPage() {
                             {booking.horario_inicio} &mdash; {booking.horario_fim}
                           </span>
                           <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'white', marginTop: '4px' }}>
-                            {booking.isGoogleCalendar ? booking.title : (lead?.nome || 'Cliente Externo')}
+                            {booking.isGoogleCalendar ? booking.title : (client?.name || 'Cliente externo')}
                           </h4>
-                          {!booking.isGoogleCalendar && lead?.empresa && (
+                          {!booking.isGoogleCalendar && client?.whatsapp && (
                             <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0 0' }}>
-                              {lead.empresa} ({lead.segmento})
+                              {formatPhone(client.whatsapp)}
                             </p>
                           )}
                           {booking.isGoogleCalendar && booking.notas && (
@@ -507,7 +515,7 @@ export default function CalendarPage() {
             ) : (
               <>
                 {selectedDateTasks.map((task) => {
-                  const lead = leads.find(l => l.id === task.lead_id);
+                  const client = clients.find(c => c.id === task.client_id);
                   const responsavel = team.find(t => t.id === task.responsavel_id);
                   const isConcluida = task.status === 'concluida';
 
@@ -564,9 +572,9 @@ export default function CalendarPage() {
                             }}>
                               {task.titulo}
                             </h4>
-                            {lead && (
+                            {client && (
                               <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
-                                Cliente: <strong>{lead.nome}</strong> {lead.empresa ? `(${lead.empresa})` : ''}
+                                Cliente: <strong>{client.name}</strong>
                               </p>
                             )}
                             {task.descricao && (
@@ -684,17 +692,22 @@ export default function CalendarPage() {
               </label>
               <select
                 required
-                value={newLeadId}
-                onChange={(e) => setNewLeadId(e.target.value)}
+                value={newClientId}
+                onChange={(e) => setNewClientId(e.target.value)}
                 style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Escolha um Cliente --</option>
-                {leads.map(lead => (
-                  <option key={lead.id} value={lead.id}>
-                    {lead.nome} {lead.empresa ? `(${lead.empresa})` : ''}
+                {activeClients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} — {formatPhone(client.whatsapp)}
                   </option>
                 ))}
               </select>
+              {activeClients.length === 0 && (
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                  Nenhum cliente cadastrado ainda. Cadastre primeiro na aba <strong>Clientes</strong>.
+                </p>
+              )}
             </div>
 
             {/* Consultor / Responsável selector */}
@@ -754,9 +767,9 @@ export default function CalendarPage() {
                   onChange={(e) => setNewType(e.target.value as BookingTipo)}
                   style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
                 >
-                  <option value="diagnostico">Diagnóstico Comercial</option>
-                  <option value="proposta">Apresentação de Proposta</option>
-                  <option value="followup">Follow-up / Alinhamento</option>
+                  <option value="diagnostico">Exame de vista</option>
+                  <option value="proposta">Entrega / Orçamento de óculos</option>
+                  <option value="followup">Retorno / Acompanhamento</option>
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -864,14 +877,14 @@ export default function CalendarPage() {
                 Selecionar Cliente
               </label>
               <select
-                value={newTaskLeadId}
-                onChange={(e) => setNewTaskLeadId(e.target.value)}
+                value={newTaskClientId}
+                onChange={(e) => setNewTaskClientId(e.target.value)}
                 style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Sem Cliente Associado --</option>
-                {leads.map(lead => (
-                  <option key={lead.id} value={lead.id}>
-                    {lead.nome} {lead.empresa ? `(${lead.empresa})` : ''}
+                {activeClients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} — {formatPhone(client.whatsapp)}
                   </option>
                 ))}
               </select>
@@ -990,7 +1003,7 @@ export default function CalendarPage() {
 
       {/* --- MODAL: Booking Details --- */}
       {selectedBooking && (() => {
-        const lead = leads.find(l => l.id === selectedBooking.lead_id);
+        const client = clients.find(c => c.id === selectedBooking.client_id);
         const consultor = team.find(t => t.id === selectedBooking.consultor_id);
         return (
           <div style={{
@@ -1033,31 +1046,12 @@ export default function CalendarPage() {
                   Informações do Cliente
                 </span>
                 <div style={{ background: '#1c1c24', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'white' }}>{lead?.nome || 'Cliente Externo'}</div>
-                  {lead?.email && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>E-mail: <strong style={{ color: 'white' }}>{lead.email}</strong></div>}
-                  {lead?.telefone && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Telefone: <strong style={{ color: 'white' }}>{lead.telefone}</strong></div>}
-                  {lead?.origem && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Origem: <strong style={{ color: 'white' }}>{lead.origem}</strong></div>}
-                  {lead?.empresa && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Quem indicou: <strong style={{ color: 'white' }}>{lead.empresa}</strong></div>}
-                  {lead?.segmento && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Relação: <strong style={{ color: 'white' }}>{lead.segmento}</strong></div>}
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'white' }}>{client?.name || 'Cliente externo'}</div>
+                  {client?.whatsapp && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>WhatsApp: <strong style={{ color: 'white' }}>{formatPhone(client.whatsapp)}</strong></div>}
+                  {client?.email && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>E-mail: <strong style={{ color: 'white' }}>{client.email}</strong></div>}
+                  {client?.notes && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Observações: <strong style={{ color: 'white' }}>{client.notes}</strong></div>}
                 </div>
               </div>
-
-              {/* Quiz Results */}
-              {lead?.respostas_quiz && lead.respostas_quiz.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
-                    Respostas do Quiz de Qualificação
-                  </span>
-                  <div style={{ background: '#1c1c24', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '200px', overflowY: 'auto' }}>
-                    {lead.respostas_quiz.map((resp, i) => (
-                      <div key={i} style={{ borderBottom: i < lead.respostas_quiz!.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', paddingBottom: i < lead.respostas_quiz!.length - 1 ? '10px' : 0 }}>
-                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{resp.pergunta}</div>
-                        <div style={{ fontSize: '13.5px', color: 'white', fontWeight: 600, marginTop: '4px' }}>{resp.resposta}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Booking Info */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

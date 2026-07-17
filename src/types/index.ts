@@ -69,6 +69,7 @@ export type BookingTipo = 'diagnostico' | 'proposta' | 'followup' | 'google_even
 export interface Booking {
   id: string;
   lead_id?: string;
+  client_id?: string | null;
   consultor_id: string;
   data: string; // YYYY-MM-DD
   horario_inicio: string; // HH:MM
@@ -89,6 +90,7 @@ export interface Booking {
 export interface Task {
   id: string;
   lead_id?: string | null;
+  client_id?: string | null;
   responsavel_id?: string | null;
   data: string; // YYYY-MM-DD
   titulo: string;

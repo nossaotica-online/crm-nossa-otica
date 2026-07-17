@@ -2,10 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Lead, Booking, Sale, Goal, Profile, LeadStatus, LeadOrigem, Task } from '@/types';
+import { ClientRecord } from '@/types/clients';
 import { createClient } from '@/lib/supabase/client';
 
 interface CRMContextType {
   leads: Lead[];
+  clients: ClientRecord[];
   bookings: Booking[];
   sales: Sale[];
   goals: Goal[];
@@ -34,6 +36,7 @@ const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
   const [team, setTeam] = useState<Profile[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -47,16 +50,18 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!silent) setLoading(true);
     
     // Buscar dados reais do Supabase
-    const [leadsRes, teamRes, bookingsRes, salesRes, goalsRes, tasksRes] = await Promise.all([
+    const [leadsRes, teamRes, bookingsRes, salesRes, goalsRes, tasksRes, clientsRes] = await Promise.all([
       supabase.from('leads').select('*').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*'),
       supabase.from('bookings').select('*').order('data', { ascending: true }),
       supabase.from('sales').select('*').order('created_at', { ascending: false }),
       supabase.from('goals').select('*'),
       supabase.from('tasks').select('*').order('data', { ascending: true }),
+      supabase.from('clients').select('*').order('name', { ascending: true }),
     ]);
 
     if (leadsRes.data) setLeads(leadsRes.data as Lead[]);
+    if (clientsRes.data) setClients(clientsRes.data as ClientRecord[]);
     if (teamRes.data) setTeam(teamRes.data as Profile[]);
     if (salesRes.data) setSales(salesRes.data as Sale[]);
     if (goalsRes.data) setGoals(goalsRes.data as Goal[]);
@@ -77,6 +82,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => loadData(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => loadData(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => loadData(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => loadData(true))
       .subscribe();
 
     return () => {
@@ -308,6 +314,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <CRMContext.Provider
       value={{
         leads,
+        clients,
         bookings,
         tasks,
         sales,

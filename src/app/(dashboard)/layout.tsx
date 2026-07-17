@@ -90,13 +90,6 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Acesso temporário apenas durante o desenvolvimento local.
-      // O build de produção continua exigindo a sessão do Supabase.
-      if (process.env.NODE_ENV === 'development') {
-        setIsAuthorized(true);
-        return;
-      }
-
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
