@@ -18,7 +18,7 @@ export interface FamilyGroup {
 export interface ClientRecord {
   id: string;
   name: string;
-  whatsapp: string;
+  whatsapp: string | null;
   secondary_phone: string | null;
   birth_date: string | null;
   email: string | null;

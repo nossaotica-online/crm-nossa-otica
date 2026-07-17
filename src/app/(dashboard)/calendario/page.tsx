@@ -413,9 +413,9 @@ export default function CalendarPage() {
                           <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'white', marginTop: '4px' }}>
                             {booking.isGoogleCalendar ? booking.title : (client?.name || 'Cliente externo')}
                           </h4>
-                          {!booking.isGoogleCalendar && client?.whatsapp && (
+                          {!booking.isGoogleCalendar && (client?.whatsapp || client?.secondary_phone) && (
                             <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0 0' }}>
-                              {formatPhone(client.whatsapp)}
+                              {formatPhone(client.whatsapp || client.secondary_phone)}
                             </p>
                           )}
                           {booking.isGoogleCalendar && booking.notas && (
@@ -699,7 +699,7 @@ export default function CalendarPage() {
                 <option value="">-- Escolha um Cliente --</option>
                 {activeClients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.name} — {formatPhone(client.whatsapp)}
+                    {client.name} — {formatPhone(client.whatsapp || client.secondary_phone)}
                   </option>
                 ))}
               </select>
@@ -884,7 +884,7 @@ export default function CalendarPage() {
                 <option value="">-- Sem Cliente Associado --</option>
                 {activeClients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.name} — {formatPhone(client.whatsapp)}
+                    {client.name} — {formatPhone(client.whatsapp || client.secondary_phone)}
                   </option>
                 ))}
               </select>
@@ -1047,7 +1047,7 @@ export default function CalendarPage() {
                 </span>
                 <div style={{ background: '#1c1c24', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ fontSize: '15px', fontWeight: 700, color: 'white' }}>{client?.name || 'Cliente externo'}</div>
-                  {client?.whatsapp && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>WhatsApp: <strong style={{ color: 'white' }}>{formatPhone(client.whatsapp)}</strong></div>}
+                  {(client?.whatsapp || client?.secondary_phone) && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Telefone: <strong style={{ color: 'white' }}>{formatPhone(client.whatsapp || client.secondary_phone)}</strong></div>}
                   {client?.email && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>E-mail: <strong style={{ color: 'white' }}>{client.email}</strong></div>}
                   {client?.notes && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Observações: <strong style={{ color: 'white' }}>{client.notes}</strong></div>}
                 </div>

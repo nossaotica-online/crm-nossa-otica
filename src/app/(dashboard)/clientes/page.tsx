@@ -68,8 +68,8 @@ const normalizeWhatsapp = (value: string) => {
   return digits.slice(0, 11);
 };
 
-const formatPhone = (value: string) => {
-  const digits = normalizeWhatsapp(value);
+const formatPhone = (value: string | null | undefined) => {
+  const digits = normalizeWhatsapp(value || '');
   if (digits.length <= 2) return digits;
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
@@ -110,12 +110,15 @@ const describeWriteError = (error: { code?: string; message?: string } | null) =
   return msg || 'erro desconhecido';
 };
 
+// Telefone de contato: o próprio WhatsApp ou, na falta, o telefone de recado.
+const contactPhone = (client: ClientRecord) => client.whatsapp || client.secondary_phone || '';
+
 // Busca de indicador/familiar: telefone com ou sem formatação, nome sem acento.
 const matchesClientSearch = (client: ClientRecord, rawTerm: string) => {
   const term = rawTerm.trim();
   if (!term) return true;
   const digits = onlyDigits(term);
-  if (digits.length >= 3 && (client.whatsapp.includes(digits) || (client.secondary_phone || '').includes(digits))) return true;
+  if (digits.length >= 3 && ((client.whatsapp || '').includes(digits) || (client.secondary_phone || '').includes(digits))) return true;
   return normalizeSearch(client.name).includes(normalizeSearch(term));
 };
 
@@ -198,7 +201,7 @@ export default function ClientesPage() {
       const group = groupById(client.family_group_id)?.name || '';
       const clientPrescriptions = prescriptions.filter((prescription) => prescription.client_id === client.id);
       const haystack = normalizeSearch([
-        client.name, client.whatsapp, formatPhone(client.whatsapp), client.secondary_phone, client.notes,
+        client.name, client.whatsapp, formatPhone(client.whatsapp), client.secondary_phone, formatPhone(client.secondary_phone), client.notes,
         familyNames, referrer, group, sourceLabel(client.source), client.source_details,
         client.product_interests.map(productLabel).join(' '), searchableDate(client.created_at),
         searchableDate(client.birth_date), clientPrescriptions.map((item) => `${searchableDate(item.prescription_date)} ${item.doctor_name || ''}`).join(' '),
@@ -295,8 +298,11 @@ export default function ClientesPage() {
     setError('');
     setNotice('');
     const whatsapp = normalizeWhatsapp(form.whatsapp);
+    const secondaryPhone = normalizeWhatsapp(form.secondary_phone);
     if (form.name.trim().length < 2) return setError('O nome completo é obrigatório.');
-    if (whatsapp.length < 10) return setError('Informe um WhatsApp brasileiro válido com DDD.');
+    if (form.whatsapp.trim() && whatsapp.length < 10) return setError('O WhatsApp do cliente está incompleto — confira o DDD.');
+    if (form.secondary_phone.trim() && secondaryPhone.length < 10) return setError('O telefone secundário está incompleto — confira o DDD.');
+    if (!whatsapp && !secondaryPhone) return setError('Informe pelo menos um telefone: o WhatsApp do cliente ou um telefone de recado no campo secundário.');
     if (!form.source) return setError('Informe de onde veio o cliente.');
     if (form.source === 'indicacao' && !form.referred_by_client_id) return setError('Selecione quem indicou este cliente.');
     if (duplicateClient) return setError('Este número já pertence a um cliente cadastrado.');
@@ -304,8 +310,9 @@ export default function ClientesPage() {
 
     setSaving(true);
     const payload = {
-      name: form.name.trim(), whatsapp,
-      secondary_phone: normalizeWhatsapp(form.secondary_phone) || null,
+      name: form.name.trim(),
+      whatsapp: whatsapp || null,
+      secondary_phone: secondaryPhone || null,
       birth_date: form.birth_date || null,
       email: form.email.trim() || null,
       notes: form.notes.trim() || null,
@@ -396,7 +403,9 @@ export default function ClientesPage() {
   };
 
   const openWhatsapp = (client: ClientRecord) => {
-    window.open(`https://wa.me/55${normalizeWhatsapp(client.whatsapp)}`, '_blank', 'noopener,noreferrer');
+    const phone = normalizeWhatsapp(contactPhone(client));
+    if (!phone) return;
+    window.open(`https://wa.me/55${phone}`, '_blank', 'noopener,noreferrer');
   };
 
   const openNewPrescription = () => {
@@ -546,7 +555,7 @@ export default function ClientesPage() {
                     return (
                       <tr key={client.id} className={client.status === 'archived' ? styles.archivedRow : ''} onClick={() => setViewClientId(client.id)}>
                         <td data-label="Cliente"><strong>{client.name}</strong>{client.status === 'archived' && <span className={styles.statusPill}>Arquivado</span>}</td>
-                        <td data-label="WhatsApp">{formatPhone(client.whatsapp)}</td>
+                        <td data-label="WhatsApp">{client.whatsapp ? formatPhone(client.whatsapp) : client.secondary_phone ? `${formatPhone(client.secondary_phone)} (recado)` : '—'}</td>
                         <td data-label="Origem">{sourceLabel(client.source)}</td>
                         <td data-label="Produto">{client.product_interests.length ? client.product_interests.map(productLabel).join(', ') : '—'}</td>
                         <td data-label="Parentesco">{firstRelationship ? relationLabel(firstRelationship.relationship_type) : '—'}</td>
@@ -587,8 +596,9 @@ export default function ClientesPage() {
               <h3>Dados principais</h3>
               <div className={styles.formGrid}>
                 <label className={styles.fullField}>Nome completo *<input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-                <label>WhatsApp / telefone principal *<input required type="tel" value={form.whatsapp} onChange={(event) => setForm({ ...form, whatsapp: formatPhone(event.target.value) })} placeholder="(11) 99999-9999" /></label>
-                <label>Telefone secundário<input type="tel" value={form.secondary_phone} onChange={(event) => setForm({ ...form, secondary_phone: formatPhone(event.target.value) })} /></label>
+                <label>WhatsApp do cliente<input type="tel" value={form.whatsapp} onChange={(event) => setForm({ ...form, whatsapp: formatPhone(event.target.value) })} placeholder="(62) 99999-9999" /></label>
+                <label>Telefone secundário / recado<input type="tel" value={form.secondary_phone} onChange={(event) => setForm({ ...form, secondary_phone: formatPhone(event.target.value) })} placeholder="Telefone de um familiar" /></label>
+                <p className={`${styles.helper} ${styles.fullField}`}>Pelo menos um telefone é obrigatório. Cliente sem celular próprio? Deixe o WhatsApp em branco e informe o telefone de um familiar no campo de recado.</p>
                 {duplicateClient && <div className={`${styles.duplicateWarning} ${styles.fullField}`}><span>Este número já pertence a um cliente cadastrado.</span><button type="button" onClick={() => { setFormOpen(false); setViewClientId(duplicateClient.id); }}>Abrir cadastro existente</button></div>}
                 <label>Data de nascimento<input type="date" value={form.birth_date} onChange={(event) => setForm({ ...form, birth_date: event.target.value })} /></label>
                 <label>E-mail<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
@@ -608,7 +618,7 @@ export default function ClientesPage() {
 
             <section className={styles.formSection}>
               <h3>Indicação</h3>
-              {form.source === 'indicacao' ? <div className={styles.selectorSearch}><input value={referrerSearch} onChange={(event) => setReferrerSearch(event.target.value)} placeholder="Pesquisar indicador por nome ou telefone" /><label>Quem indicou este cliente? *<select required value={form.referred_by_client_id} onChange={(event) => setForm({ ...form, referred_by_client_id: event.target.value })}><option value="">Selecione quem indicou...</option>{matchingReferrers.map((client) => <option key={client.id} value={client.id}>{client.name} — {formatPhone(client.whatsapp)}</option>)}</select></label>{referrerSearch.trim() !== '' && matchingReferrers.length === 0 && <p className={styles.helper}>Nenhum cliente encontrado com “{referrerSearch}”. Quem indicou precisa estar cadastrado — confira o número ou limpe a pesquisa para ver todos.</p>}</div> : <p className={styles.helper}>Selecione “Indicação” na origem para vincular outro cliente como indicador.</p>}
+              {form.source === 'indicacao' ? <div className={styles.selectorSearch}><input value={referrerSearch} onChange={(event) => setReferrerSearch(event.target.value)} placeholder="Pesquisar indicador por nome ou telefone" /><label>Quem indicou este cliente? *<select required value={form.referred_by_client_id} onChange={(event) => setForm({ ...form, referred_by_client_id: event.target.value })}><option value="">Selecione quem indicou...</option>{matchingReferrers.map((client) => <option key={client.id} value={client.id}>{client.name} — {formatPhone(contactPhone(client))}</option>)}</select></label>{referrerSearch.trim() !== '' && matchingReferrers.length === 0 && <p className={styles.helper}>Nenhum cliente encontrado com “{referrerSearch}”. Quem indicou precisa estar cadastrado — confira o número ou limpe a pesquisa para ver todos.</p>}</div> : <p className={styles.helper}>Selecione “Indicação” na origem para vincular outro cliente como indicador.</p>}
             </section>
 
             <section className={styles.formSection}>
@@ -618,7 +628,7 @@ export default function ClientesPage() {
                 <div className={styles.newGroup}><label>Criar novo grupo<input value={newGroupName} onChange={(event) => setNewGroupName(event.target.value)} placeholder="Ex: Família Silva" /></label><button type="button" onClick={() => void createGroup()}>Criar grupo</button></div>
                 {!editingId && otherClients.length > 0 && (
                   <>
-                    <label>Vincular familiar<input value={familySearch} onChange={(event) => setFamilySearch(event.target.value)} placeholder="Pesquisar por nome ou telefone" /><select value={form.related_client_id} onChange={(event) => setForm({ ...form, related_client_id: event.target.value })}><option value="">Nenhum</option>{matchingRelatives.map((client) => <option key={client.id} value={client.id}>{client.name} — {formatPhone(client.whatsapp)}</option>)}</select></label>
+                    <label>Vincular familiar<input value={familySearch} onChange={(event) => setFamilySearch(event.target.value)} placeholder="Pesquisar por nome ou telefone" /><select value={form.related_client_id} onChange={(event) => setForm({ ...form, related_client_id: event.target.value })}><option value="">Nenhum</option>{matchingRelatives.map((client) => <option key={client.id} value={client.id}>{client.name} — {formatPhone(contactPhone(client))}</option>)}</select></label>
                     {familySearch.trim() !== '' && matchingRelatives.length === 0 && <p className={`${styles.helper} ${styles.fullField}`}>Nenhum cliente encontrado com “{familySearch}”. Limpe a pesquisa para ver todos.</p>}
                     <label>Tipo de parentesco<select value={form.relationship_type} onChange={(event) => setForm({ ...form, relationship_type: event.target.value as RelationshipType })} disabled={!form.related_client_id}>{RELATIONSHIP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                   </>
@@ -643,8 +653,8 @@ export default function ClientesPage() {
             <div className={styles.profileActions}><button onClick={() => { setViewClientId(null); openEditClient(selectedClient); }}>Editar cliente</button><button onClick={() => openWhatsapp(selectedClient)}>Abrir WhatsApp</button><button onClick={openNewPrescription}>Adicionar receita/grau</button><button onClick={() => { setViewClientId(null); openEditClient(selectedClient); }}>Vincular indicação</button><button onClick={() => document.getElementById('family-linker')?.scrollIntoView({ behavior: 'smooth' })}>Adicionar familiar</button><button onClick={() => void setArchiveStatus(selectedClient)}>{selectedClient.status === 'active' ? 'Arquivar' : 'Reativar'}</button><button className={styles.dangerAction} onClick={() => void deleteClient(selectedClient)}>Excluir</button></div>
 
             <section className={styles.profileGrid}>
-              <div><span>WhatsApp</span><strong>{formatPhone(selectedClient.whatsapp)}</strong></div>
-              <div><span>Telefone secundário</span><strong>{selectedClient.secondary_phone ? formatPhone(selectedClient.secondary_phone) : 'Não informado'}</strong></div>
+              <div><span>WhatsApp</span><strong>{selectedClient.whatsapp ? formatPhone(selectedClient.whatsapp) : 'Não tem (usar recado)'}</strong></div>
+              <div><span>Telefone secundário / recado</span><strong>{selectedClient.secondary_phone ? formatPhone(selectedClient.secondary_phone) : 'Não informado'}</strong></div>
               <div><span>Nascimento</span><strong>{formatDate(selectedClient.birth_date)}</strong></div>
               <div><span>E-mail</span><strong>{selectedClient.email || 'Não informado'}</strong></div>
               <div><span>Cadastro</span><strong>{formatDate(selectedClient.created_at)}</strong></div>
@@ -657,14 +667,14 @@ export default function ClientesPage() {
 
             <section className={styles.detailSection}><div className={styles.sectionHeading}><h3>Histórico de receitas e graus <b>{selectedPrescriptions.length}</b></h3><button onClick={openNewPrescription}>+ Nova receita</button></div>{selectedPrescriptions.length === 0 ? <p className={styles.helper}>Nenhuma receita cadastrada.</p> : <div className={styles.prescriptionList}>{selectedPrescriptions.map((prescription) => <article key={prescription.id} className={styles.prescriptionCard}><header><div><strong>{formatDate(prescription.prescription_date)}</strong><span>{prescription.doctor_name || 'Médico não informado'}{prescription.doctor_crm ? ` · ${prescription.doctor_crm}` : ''}</span></div><div><button onClick={() => openEditPrescription(prescription)}>Editar</button><button className={styles.removeLink} onClick={() => void deletePrescription(prescription)}>Excluir</button></div></header><div className={styles.gradeTable}><div><b>Olho</b><b>Esférico</b><b>Cilíndrico</b><b>Eixo</b><b>Adição</b></div><div><strong>OD</strong><span>{prescription.od_sphere ?? '—'}</span><span>{prescription.od_cylinder ?? '—'}</span><span>{prescription.od_axis ?? '—'}</span><span>{prescription.od_addition ?? '—'}</span></div><div><strong>OE</strong><span>{prescription.oe_sphere ?? '—'}</span><span>{prescription.oe_cylinder ?? '—'}</span><span>{prescription.oe_axis ?? '—'}</span><span>{prescription.oe_addition ?? '—'}</span></div></div><footer>DNP: OD {prescription.dnp_right ?? '—'} mm · OE {prescription.dnp_left ?? '—'} mm{prescription.notes ? ` · ${prescription.notes}` : ''}</footer></article>)}</div>}</section>
 
-            <section className={styles.detailSection}><h3>Pessoas indicadas por este cliente <b>{selectedReferrals.length}</b></h3>{selectedReferrals.length === 0 ? <p className={styles.helper}>Nenhuma indicação vinculada.</p> : <div className={styles.personList}>{selectedReferrals.map((client) => <button key={client.id} onClick={() => setViewClientId(client.id)}><strong>{client.name}</strong><span>{formatPhone(client.whatsapp)} · {formatDate(client.created_at)}</span></button>)}</div>}</section>
+            <section className={styles.detailSection}><h3>Pessoas indicadas por este cliente <b>{selectedReferrals.length}</b></h3>{selectedReferrals.length === 0 ? <p className={styles.helper}>Nenhuma indicação vinculada.</p> : <div className={styles.personList}>{selectedReferrals.map((client) => <button key={client.id} onClick={() => setViewClientId(client.id)}><strong>{client.name}</strong><span>{formatPhone(contactPhone(client))} · {formatDate(client.created_at)}</span></button>)}</div>}</section>
 
-            <section className={styles.detailSection}><h3>Família <b>{selectedRelationships.length}</b></h3>{selectedRelationships.length === 0 ? <p className={styles.helper}>Nenhum familiar vinculado.</p> : <div className={styles.personList}>{selectedRelationships.map((relationship) => { const relative = clientById(relationship.related_client_id); return relative ? <div className={styles.personRow} key={relationship.id}><button onClick={() => setViewClientId(relative.id)}><strong>{relative.name}</strong><span>{relationLabel(relationship.relationship_type)} · {formatPhone(relative.whatsapp)}</span></button><button className={styles.removeLink} onClick={() => void removeRelationship(relative.id)}>Remover vínculo</button></div> : null; })}</div>}
-              <div className={styles.inlineRelation} id="family-linker"><input value={familySearch} onChange={(event) => setFamilySearch(event.target.value)} placeholder="Pesquisar familiar" /><select value={relationClientId} onChange={(event) => setRelationClientId(event.target.value)}><option value="">Selecionar familiar...</option>{matchingRelatives.map((client) => <option key={client.id} value={client.id}>{client.name} — {formatPhone(client.whatsapp)}</option>)}</select><select value={relationType} onChange={(event) => setRelationType(event.target.value as RelationshipType)}>{RELATIONSHIP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><button onClick={() => void addRelationship()}>Adicionar familiar</button></div>
+            <section className={styles.detailSection}><h3>Família <b>{selectedRelationships.length}</b></h3>{selectedRelationships.length === 0 ? <p className={styles.helper}>Nenhum familiar vinculado.</p> : <div className={styles.personList}>{selectedRelationships.map((relationship) => { const relative = clientById(relationship.related_client_id); return relative ? <div className={styles.personRow} key={relationship.id}><button onClick={() => setViewClientId(relative.id)}><strong>{relative.name}</strong><span>{relationLabel(relationship.relationship_type)} · {formatPhone(contactPhone(relative))}</span></button><button className={styles.removeLink} onClick={() => void removeRelationship(relative.id)}>Remover vínculo</button></div> : null; })}</div>}
+              <div className={styles.inlineRelation} id="family-linker"><input value={familySearch} onChange={(event) => setFamilySearch(event.target.value)} placeholder="Pesquisar familiar" /><select value={relationClientId} onChange={(event) => setRelationClientId(event.target.value)}><option value="">Selecionar familiar...</option>{matchingRelatives.map((client) => <option key={client.id} value={client.id}>{client.name} — {formatPhone(contactPhone(client))}</option>)}</select><select value={relationType} onChange={(event) => setRelationType(event.target.value as RelationshipType)}>{RELATIONSHIP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><button onClick={() => void addRelationship()}>Adicionar familiar</button></div>
               {familySearch.trim() !== '' && matchingRelatives.length === 0 && <p className={styles.helper}>Nenhum cliente encontrado com “{familySearch}”. Limpe a pesquisa para ver todos.</p>}
             </section>
 
-            {selectedClient.family_group_id && <section className={styles.detailSection}><h3>Membros de {groupById(selectedClient.family_group_id)?.name} <b>{selectedGroupMembers.length + 1}</b></h3><div className={styles.personList}>{selectedGroupMembers.map((client) => <button key={client.id} onClick={() => setViewClientId(client.id)}><strong>{client.name}</strong><span>{formatPhone(client.whatsapp)}</span></button>)}</div></section>}
+            {selectedClient.family_group_id && <section className={styles.detailSection}><h3>Membros de {groupById(selectedClient.family_group_id)?.name} <b>{selectedGroupMembers.length + 1}</b></h3><div className={styles.personList}>{selectedGroupMembers.map((client) => <button key={client.id} onClick={() => setViewClientId(client.id)}><strong>{client.name}</strong><span>{formatPhone(contactPhone(client))}</span></button>)}</div></section>}
           </article>
         </div>
       )}
