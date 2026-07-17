@@ -49,6 +49,14 @@ const getIcon = (iconName: string, active: boolean) => {
           <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
+    case 'os':
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="9" y="2" width="6" height="4" rx="1" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 12h6M9 16h4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
     case 'sales':
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -370,6 +378,28 @@ export default function DashboardLayout({
       <main className="main-content" style={{ marginLeft: 'var(--sidebar-width)', flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
         {children}
       </main>
+
+      {/* Bottom navigation — aparência de app no celular */}
+      <nav className="mobile-bottom-nav" aria-label="Navegação principal">
+        {[
+          { label: 'Início', href: '/', icon: 'dashboard' },
+          { label: 'Clientes', href: '/clientes', icon: 'leads' },
+          { label: 'Agenda', href: '/calendario', icon: 'calendar' },
+          { label: 'O.S.', href: '/ordens', icon: 'sales' },
+        ].map((item) => {
+          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          return (
+            <Link key={item.href} href={item.href} className={`bottom-nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              {getIcon(item.icon, isActive)}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button type="button" className="bottom-nav-item" onClick={() => setMobileMenuOpen(true)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          <span>Mais</span>
+        </button>
+      </nav>
     </div>
   );
 }

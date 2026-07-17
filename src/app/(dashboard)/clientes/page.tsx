@@ -48,7 +48,7 @@ const RELATIONSHIP_OPTIONS: { value: RelationshipType; label: string }[] = [
 ].map(([value, label]) => ({ value: value as RelationshipType, label }));
 
 const EMPTY_FORM: ClientFormValues = {
-  name: '', whatsapp: '', secondary_phone: '', birth_date: '', email: '', notes: '',
+  name: '', whatsapp: '', secondary_phone: '', cpf: '', rg: '', birth_date: '', email: '', notes: '',
   family_group_id: '', referred_by_client_id: '', related_client_id: '', relationship_type: 'outro',
   source: '', source_details: '', product_interests: [],
 };
@@ -272,6 +272,8 @@ export default function ClientesPage() {
       name: client.name,
       whatsapp: formatPhone(client.whatsapp),
       secondary_phone: client.secondary_phone ? formatPhone(client.secondary_phone) : '',
+      cpf: client.cpf || '',
+      rg: client.rg || '',
       birth_date: client.birth_date || '',
       email: client.email || '',
       notes: client.notes || '',
@@ -324,6 +326,8 @@ export default function ClientesPage() {
       name: form.name.trim(),
       whatsapp: whatsapp || null,
       secondary_phone: secondaryPhone || null,
+      cpf: form.cpf.trim() || null,
+      rg: form.rg.trim() || null,
       birth_date: form.birth_date || null,
       email: form.email.trim() || null,
       notes: form.notes.trim() || null,
@@ -599,6 +603,8 @@ export default function ClientesPage() {
                 <label>Telefone secundário / recado<input type="tel" value={form.secondary_phone} onChange={(event) => setForm({ ...form, secondary_phone: formatPhone(event.target.value) })} placeholder="Telefone de um familiar" /></label>
                 <p className={`${styles.helper} ${styles.fullField}`}>Pelo menos um telefone é obrigatório. Cliente sem celular próprio? Deixe o WhatsApp em branco e informe o telefone de um familiar no campo de recado.</p>
                 {duplicateClient && <div className={`${styles.duplicateWarning} ${styles.fullField}`}><span>Este número já pertence a um cliente cadastrado.</span><button type="button" onClick={() => { setFormOpen(false); setViewClientId(duplicateClient.id); }}>Abrir cadastro existente</button></div>}
+                <label>CPF<input value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} placeholder="000.000.000-00" /></label>
+                <label>RG<input value={form.rg} onChange={(event) => setForm({ ...form, rg: event.target.value })} /></label>
                 <label>Data de nascimento<input type="date" value={form.birth_date} onChange={(event) => setForm({ ...form, birth_date: event.target.value })} /></label>
                 <label>E-mail<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
                 <label>Data do cadastro<input value={editingId ? formatDate(clientById(editingId)?.created_at || null) : 'Preenchida automaticamente'} disabled /></label>

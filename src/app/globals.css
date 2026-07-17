@@ -393,11 +393,36 @@ body.light-mode img[src$="/logo.png"] {
 /* ============================================================
    RESPONSIVIDADE — CELULAR E TABLET
    ============================================================ */
+
+/* Barra de navegação inferior (app no celular) — escondida no desktop */
+.mobile-bottom-nav { display: none; }
+.bottom-nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; flex: 1; min-width: 0; padding: 7px 2px 4px;
+  background: transparent; border: 0; text-decoration: none; cursor: pointer;
+  color: #8e8e93; font-size: 10.5px; font-weight: 600;
+}
+.bottom-nav-item.active { color: var(--text-primary); }
+.bottom-nav-item span { line-height: 1; }
+
 @media (max-width: 900px) {
   :root { --sidebar-width: 0px; }
 
   html, body { max-width: 100%; overflow-x: hidden; }
   body { font-size: 14px; }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 85;
+    padding: 4px 6px calc(6px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--glass-border-strong);
+  }
+  .main-content { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+  .main-content [style*="position: fixed"] { z-index: 100; }
 
   .dashboard-layout { display: block; min-width: 0; }
   .main-content {

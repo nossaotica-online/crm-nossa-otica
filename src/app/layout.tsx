@@ -7,11 +7,17 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 export const metadata: Metadata = {
   title: 'CRM Nossa Ótica',
   description: 'Gestão de clientes, atendimentos e vendas da Nossa Ótica',
+  manifest: `${basePath}/manifest.webmanifest`,
   icons: {
     icon: `${basePath}/logo.png`,
     shortcut: `${basePath}/logo.png`,
-    apple: `${basePath}/logo.png`,
-  }
+    apple: `${basePath}/apple-touch-icon.png`,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Nossa Ótica',
+  },
 };
 
 export const viewport: Viewport = {
