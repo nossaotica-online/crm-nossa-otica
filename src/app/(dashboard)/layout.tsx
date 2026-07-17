@@ -9,7 +9,7 @@ import { NAV_ITEMS } from '@/lib/constants';
 // SVG Icons matching the mockup
 const getIcon = (iconName: string, active: boolean) => {
   const color = active ? 'var(--text-primary)' : '#8e8e93';
-  
+
   switch (iconName) {
     case 'dashboard':
       return (
@@ -87,12 +87,13 @@ export default function DashboardLayout({
   const [darkMode, setDarkMode] = useState(true);
   const [channelsExpanded, setChannelsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         router.push('/login');
       } else {
@@ -112,7 +113,7 @@ export default function DashboardLayout({
         }
       }
     };
-    
+
     checkAuth();
   }, [router]);
 
@@ -126,73 +127,98 @@ export default function DashboardLayout({
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [mobileMenuOpen]);
+
   if (!isAuthorized) {
-    return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-primary)', color: 'white' }}>Verificando acesso...</div>;
+    return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Verificando acesso...</div>;
   }
 
   return (
     <div className="dashboard-layout">
+      <button
+        type="button"
+        className="mobile-menu-button"
+        onClick={() => setMobileMenuOpen((open) => !open)}
+        aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={mobileMenuOpen}
+      >
+        {mobileMenuOpen ? (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        ) : (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        )}
+      </button>
+      {mobileMenuOpen && <button type="button" className="mobile-menu-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label="Fechar menu" />}
       {/* Left Sidebar */}
-      <aside className="sidebar" style={{ 
-        padding: '24px 16px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100vh', 
+      <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`} style={{
+        padding: '24px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
         justifyContent: 'space-between',
         background: 'var(--bg-secondary)',
         borderRight: '1px solid var(--glass-border)'
       }}>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+
           {/* Logo Nossa Ótica */}
-          <div style={{ 
-            height: '92px', 
-            width: '100%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
+          <div style={{
+            height: '92px',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             overflow: 'hidden',
             marginBottom: '8px'
           }}>
             <img src={`${basePath}/logo.png`} alt="Logo Nossa Ótica" style={{ width: '190px', height: '190px', objectFit: 'contain', flexShrink: 0 }} className="logo-img" />
           </div>
-          
+
           {/* User Profile Card AT THE TOP (Daniel Wood / Sandro Style) */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '8px', 
+            padding: '8px',
             borderRadius: '12px',
-            background: 'rgba(255,255,255,0.02)',
+            background: 'var(--surface-subtle)',
             border: '1px solid var(--glass-border)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '50%', 
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
                 background: 'linear-gradient(135deg, #8f7344 0%, #e6cc9a 100%)', // Cobalt to cyan gradient
-                display: 'flex', 
-                alignItems: 'center', 
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 800,
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '14px',
                 boxShadow: 'var(--glow-gold)'
               }}>
                 S
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   Equipe Nossa Ótica
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-success)' }}></span>
                 </span>
                 <span style={{ fontSize: '10px', color: '#8e8e93' }}>Atendimento</span>
               </div>
             </div>
-            
+
             {/* Options arrow */}
             <button style={{ color: '#8e8e93', padding: '2px' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -209,9 +235,9 @@ export default function DashboardLayout({
                 <path d="M21 21l-4.35-4.35" />
               </svg>
             </span>
-            <input 
-              type="text" 
-              placeholder="Buscar no painel..." 
+            <input
+              type="text"
+              placeholder="Buscar no painel..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -220,7 +246,7 @@ export default function DashboardLayout({
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px 12px 10px 34px',
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '12.5px',
                 outline: 'none',
                 transition: 'all 0.15s ease'
@@ -233,7 +259,7 @@ export default function DashboardLayout({
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
               return (
-                <Link key={item.href} href={item.href} style={{
+                <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} style={{
                   padding: '11px 14px',
                   borderRadius: '8px',
                   color: isActive ? 'var(--text-primary)' : '#8e8e93',
@@ -261,16 +287,16 @@ export default function DashboardLayout({
 
         {/* Footer Area: Dual Light/Dark Button Control (Exactly like mockup) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
+
           {/* Support and Help Link */}
-          <Link href="/configuracoes" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '10px', 
-            fontSize: '12.5px', 
-            color: '#8e8e93', 
-            textDecoration: 'none', 
-            padding: '8px 14px' 
+          <Link href="/configuracoes" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontSize: '12.5px',
+            color: '#8e8e93',
+            textDecoration: 'none',
+            padding: '8px 14px'
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
@@ -288,7 +314,7 @@ export default function DashboardLayout({
             display: 'flex',
             border: '1px solid var(--glass-border)'
           }}>
-            <button 
+            <button
               onClick={() => setDarkMode(false)}
               style={{
                 flex: 1,
@@ -300,9 +326,9 @@ export default function DashboardLayout({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
-                background: !darkMode ? 'rgba(255,255,255,0.05)' : 'transparent',
-                color: !darkMode ? 'white' : '#8e8e93',
-                border: !darkMode ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent',
+                background: !darkMode ? 'var(--bg-card)' : 'transparent',
+                color: !darkMode ? 'var(--text-primary)' : 'var(--text-secondary)',
+                border: !darkMode ? '1px solid var(--glass-border-strong)' : '1px solid transparent',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -312,7 +338,7 @@ export default function DashboardLayout({
               </svg>
               Claro
             </button>
-            <button 
+            <button
               onClick={() => setDarkMode(true)}
               style={{
                 flex: 1,
@@ -324,9 +350,9 @@ export default function DashboardLayout({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
-                background: darkMode ? 'rgba(255,255,255,0.05)' : 'transparent',
-                color: darkMode ? 'white' : '#8e8e93',
-                border: darkMode ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent',
+                background: darkMode ? 'var(--bg-card)' : 'transparent',
+                color: darkMode ? 'var(--text-primary)' : 'var(--text-secondary)',
+                border: darkMode ? '1px solid var(--glass-border-strong)' : '1px solid transparent',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -341,7 +367,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content Pane */}
-      <main style={{ marginLeft: 'var(--sidebar-width)', flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
+      <main className="main-content" style={{ marginLeft: 'var(--sidebar-width)', flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
         {children}
       </main>
     </div>

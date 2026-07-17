@@ -20,6 +20,9 @@
   --text-muted: #545456;      /* Texto escuro silenciado */
   --glass-border: rgba(255, 255, 255, 0.04);
   --glass-border-strong: rgba(255, 255, 255, 0.1);
+  --surface-subtle: rgba(255, 255, 255, 0.025);
+  --surface-hover: rgba(255, 255, 255, 0.055);
+  --text-on-accent: #111111;
   
   /* ---- Colors: 10% Gold (Accents) ---- */
   --accent-primary: #c9a96e;  /* Dourado-champagne Cobalto do Behance */
@@ -113,6 +116,11 @@ button {
   background-color: var(--bg-primary);
 }
 
+.mobile-menu-button,
+.mobile-menu-backdrop {
+  display: none;
+}
+
 /* ============================================================
    Components
    ============================================================ */
@@ -142,7 +150,7 @@ button {
 
 .btn-primary {
   background-color: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: var(--glow-gold);
 }
 
@@ -225,10 +233,10 @@ button {
 .table td {
   padding: 16px 12px;
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--glass-border);
 }
 .table tr:hover td {
-  background-color: rgba(255,255,255,0.02);
+  background-color: var(--surface-subtle);
 }
 
 /* Auth Layout */
@@ -254,6 +262,12 @@ body.light-mode {
   --text-muted: #8e8e93;       /* Texto silenciado */
   --glass-border: rgba(0, 0, 0, 0.06);
   --glass-border-strong: rgba(0, 0, 0, 0.12);
+  --surface-subtle: rgba(17, 24, 39, 0.035);
+  --surface-hover: rgba(17, 24, 39, 0.07);
+  --text-on-accent: #111111;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.10);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.16);
   
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
@@ -374,4 +388,130 @@ body.light-mode button[style*="background: '#212128'"] {
 /* Invert the white logo in light mode */
 body.light-mode img[src$="/logo.png"] {
   filter: brightness(0) saturate(100%) invert(10%) sepia(5%) saturate(10%) hue-rotate(314deg) brightness(97%) contrast(89%); /* Dark gray/black */
+}
+
+/* ============================================================
+   RESPONSIVIDADE — CELULAR E TABLET
+   ============================================================ */
+@media (max-width: 900px) {
+  :root { --sidebar-width: 0px; }
+
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body { font-size: 14px; }
+
+  .dashboard-layout { display: block; min-width: 0; }
+  .main-content {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+    padding-top: 60px;
+  }
+
+  .sidebar {
+    width: min(84vw, 310px) !important;
+    max-width: 310px;
+    transform: translateX(-105%);
+    transition: transform .22s ease;
+    box-shadow: 18px 0 48px rgba(0,0,0,.35);
+    z-index: 80;
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  .mobile-menu-button {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    z-index: 90;
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--glass-border-strong);
+    border-radius: 12px;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+  }
+  .mobile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,.58);
+    backdrop-filter: blur(3px);
+  }
+
+  .main-content > div {
+    min-width: 0;
+    padding: 16px !important;
+    gap: 20px !important;
+  }
+  .main-content h1 { font-size: clamp(25px, 8vw, 32px) !important; line-height: 1.12; }
+  .main-content h2 { line-height: 1.18; }
+
+  .mobile-page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+  .mobile-page-header > div {
+    width: 100% !important;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .mobile-page-header input,
+  .mobile-page-header button { width: 100%; }
+
+  .mobile-stack-grid,
+  .mobile-card-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 16px !important; }
+  .mobile-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+
+  .glass-card { min-width: 0; padding: 20px !important; }
+  .table-scroll {
+    width: calc(100% + 16px);
+    margin-right: -16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .table-scroll table { min-width: 680px; }
+
+  .kanban-mobile { margin-inline: -16px; padding-inline: 16px; scroll-snap-type: x proximity; }
+  .kanban-mobile > div { width: min(82vw, 300px) !important; scroll-snap-align: start; }
+
+  .main-content [style*="position: fixed"] {
+    padding: 10px !important;
+    align-items: flex-end !important;
+  }
+  .main-content [style*="position: fixed"] > form,
+  .main-content [style*="position: fixed"] > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    overflow-y: auto !important;
+    padding: 20px !important;
+    border-radius: 18px 18px 0 0 !important;
+    overscroll-behavior: contain;
+  }
+  .main-content [style*="position: fixed"] [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  input, select, textarea { font-size: 16px !important; }
+  button, a { touch-action: manipulation; }
+  .btn { min-height: 44px; }
+}
+
+@media (max-width: 600px) {
+  .main-content { padding-top: 58px; }
+  .main-content > div { padding: 12px !important; gap: 16px !important; }
+  .mobile-kpi-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .glass-card { padding: 16px !important; border-radius: 16px !important; }
+  .mobile-calendar-grid { gap: 3px !important; }
+  .mobile-calendar-grid > * { min-width: 0; }
+  .table-scroll { width: calc(100% + 12px); margin-right: -12px; }
+  .kanban-mobile { margin-inline: -12px; padding-inline: 12px; }
 }

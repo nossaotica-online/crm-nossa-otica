@@ -16,7 +16,7 @@ export default function TeamPage() {
     };
     fetchUser();
   }, []);
-  
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +62,7 @@ export default function TeamPage() {
     return (
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Sua Equipe</h1>
         </div>
       </div>
@@ -71,14 +71,14 @@ export default function TeamPage() {
 
   return (
     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="mobile-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Sua Equipe</h1>
         </div>
-        <button 
+        <button
           onClick={() => setIsAddModalOpen(true)}
           className="btn btn-primary"
           style={{ fontWeight: 700, padding: '10px 20px' }}
@@ -88,7 +88,7 @@ export default function TeamPage() {
       </div>
 
       {/* Team Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+      <div className="mobile-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
         {team.map((member) => {
           // Calculate specific member stats
           const memberLeads = leads.filter(l => l.responsavel_id === member.id);
@@ -97,13 +97,13 @@ export default function TeamPage() {
           const totalSalesValue = memberSales.reduce((sum, s) => sum + s.valor, 0);
 
           return (
-            <div 
-              key={member.id} 
-              className="glass-card" 
-              style={{ 
-                borderRadius: '20px', 
-                background: '#13131a', 
-                border: '1px solid rgba(255,255,255,0.05)',
+            <div
+              key={member.id}
+              className="glass-card"
+              style={{
+                borderRadius: '20px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--glass-border)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '20px'
@@ -111,16 +111,16 @@ export default function TeamPage() {
             >
               {/* Profile Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ 
-                  width: '56px', 
-                  height: '56px', 
-                  borderRadius: '50%', 
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
                   background: member.role === 'admin' ? 'linear-gradient(135deg, #c9a96e 0%, #00d4ff 100%)' : 'linear-gradient(135deg, #002255 0%, #d8bd8a 100%)',
-                  display: 'flex', 
-                  alignItems: 'center', 
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   fontWeight: 800,
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   fontSize: '20px'
                 }}>
                   {member.nome.charAt(0)}
@@ -128,7 +128,7 @@ export default function TeamPage() {
 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'white', margin: 0 }}>{member.nome}</h3>
+                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{member.nome}</h3>
                     <span style={{
                       display: 'inline-block',
                       width: '8px',
@@ -138,31 +138,31 @@ export default function TeamPage() {
                       boxShadow: member.ativo ? '0 0 8px #10b981' : '0 0 8px #ef4444'
                     }}></span>
                   </div>
-                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, display: 'block', marginTop: '2px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginTop: '2px' }}>
                     {member.cargo} {member.ativo ? '' : '(Inativo)'}
                   </span>
                 </div>
               </div>
 
               {/* Contact Info */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
-                <div>Email: <strong style={{ color: 'white' }}>{member.email}</strong></div>
-                <div>Whatsapp: <strong style={{ color: 'white' }}>{member.telefone || 'Não informado'}</strong></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <div>Email: <strong style={{ color: 'var(--text-primary)' }}>{member.email}</strong></div>
+                <div>Whatsapp: <strong style={{ color: 'var(--text-primary)' }}>{member.telefone || 'Não informado'}</strong></div>
               </div>
 
-              <hr style={{ border: 'none', height: '1px', background: 'rgba(255,255,255,0.05)', margin: 0 }} />
+              <hr style={{ border: 'none', height: '1px', background: 'var(--surface-hover)', margin: 0 }} />
 
               {/* Stats Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                <div style={{ background: 'var(--surface-subtle)', padding: '12px', borderRadius: '12px' }}>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Clientes</span>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginTop: '4px' }}>{memberLeads.length}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{memberLeads.length}</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                <div style={{ background: 'var(--surface-subtle)', padding: '12px', borderRadius: '12px' }}>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Agenda</span>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginTop: '4px' }}>{memberBookings.length}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{memberBookings.length}</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                <div style={{ background: 'var(--surface-subtle)', padding: '12px', borderRadius: '12px' }}>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Vendas</span>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--status-success)', marginTop: '4px' }}>
                     R$ {totalSalesValue >= 1000 ? `${(totalSalesValue/1000).toFixed(0)}k` : totalSalesValue}
@@ -231,11 +231,11 @@ export default function TeamPage() {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <form 
+          <form
             onSubmit={handleSubmit}
             style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '480px',
@@ -247,11 +247,11 @@ export default function TeamPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white', margin: 0 }}>Adicionar Membro da Equipe</h3>
-              <button 
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Adicionar Membro da Equipe</h3>
+              <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ color: 'var(--text-muted)', fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }}
               >
                 ✕
               </button>
@@ -265,7 +265,7 @@ export default function TeamPage() {
 
             {/* Nome */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Nome *
               </label>
               <input
@@ -274,13 +274,13 @@ export default function TeamPage() {
                 placeholder="Ex: João Silva"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
             {/* Email */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 E-mail *
               </label>
               <input
@@ -289,13 +289,13 @@ export default function TeamPage() {
                 placeholder="Ex: joao@nossaotica.com.br"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
             {/* Senha */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Senha de Acesso *
               </label>
               <input
@@ -304,13 +304,13 @@ export default function TeamPage() {
                 placeholder="Mínimo 6 caracteres"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
             {/* Cargo */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Cargo *
               </label>
               <input
@@ -319,19 +319,19 @@ export default function TeamPage() {
                 placeholder="Ex: Closer de Vendas / SDR"
                 value={cargo}
                 onChange={(e) => setCargo(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
             {/* Permissão */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Nível de Acesso *
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="vendedor">Vendedor (SDR/Closer)</option>
                 <option value="consultor">Consultor (Entrega)</option>
@@ -341,12 +341,12 @@ export default function TeamPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -357,12 +357,12 @@ export default function TeamPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 disabled={isSubmitting}
                 style={{
                   background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',

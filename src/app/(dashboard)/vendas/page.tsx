@@ -19,7 +19,7 @@ const opticalProductLabel = (serviceName: string | null) => {
 export default function SalesPage() {
   const { sales, leads, team, addSale } = useCRM();
   const [isMounted, setIsMounted] = useState(false);
-  
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -65,7 +65,7 @@ export default function SalesPage() {
     return (
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Faturamento & Vendas</h1>
         </div>
       </div>
@@ -83,15 +83,15 @@ export default function SalesPage() {
 
   return (
     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="mobile-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Faturamento & Vendas</h1>
         </div>
 
-        <button 
+        <button
           onClick={() => setIsNewSaleModalOpen(true)}
           className="btn btn-primary"
           style={{ fontWeight: 700, padding: '10px 20px' }}
@@ -101,10 +101,10 @@ export default function SalesPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-        
-        <div className="glass-card" style={{ background: '#13131a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '20px' }}>
-          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Faturamento Realizado</span>
+      <div className="mobile-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+
+        <div className="glass-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '20px' }}>
+          <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Faturamento Realizado</span>
           <h2 style={{ fontSize: '32px', fontWeight: 800, margin: '8px 0 0 0', color: 'var(--status-success)' }}>
             R$ {totalRevenue.toLocaleString('pt-BR')}
           </h2>
@@ -113,9 +113,9 @@ export default function SalesPage() {
           </span>
         </div>
 
-        <div className="glass-card" style={{ background: '#13131a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '20px' }}>
-          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Ticket Médio</span>
-          <h2 style={{ fontSize: '32px', fontWeight: 800, margin: '8px 0 0 0', color: 'white' }}>
+        <div className="glass-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '20px' }}>
+          <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Ticket Médio</span>
+          <h2 style={{ fontSize: '32px', fontWeight: 800, margin: '8px 0 0 0', color: 'var(--text-primary)' }}>
             R$ {averageTicket.toLocaleString('pt-BR')}
           </h2>
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', display: 'block', marginTop: '8px' }}>
@@ -123,8 +123,8 @@ export default function SalesPage() {
           </span>
         </div>
 
-        <div className="glass-card" style={{ background: '#13131a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '20px' }}>
-          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Pipeline em Negociação</span>
+        <div className="glass-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '20px' }}>
+          <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Pipeline em Negociação</span>
           <h2 style={{ fontSize: '32px', fontWeight: 800, margin: '8px 0 0 0', color: 'var(--accent-primary)' }}>
             R$ {potentialRevenue.toLocaleString('pt-BR')}
           </h2>
@@ -138,7 +138,8 @@ export default function SalesPage() {
       {/* Sales List Table */}
       <div className="glass-card" style={{ borderRadius: '24px' }}>
         <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Contratos & Transações</h3>
-        
+
+        <div className="table-scroll">
         <table className="table" style={{ fontSize: '13.5px' }}>
           <thead>
             <tr>
@@ -158,12 +159,12 @@ export default function SalesPage() {
               return (
                 <tr key={sale.id}>
                   <td style={{ paddingLeft: 0 }}>
-                    <div style={{ fontWeight: 600, color: 'white' }}>{lead?.nome || 'Cliente Manual'}</div>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{lead?.nome || 'Cliente Manual'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       {lead?.empresa || 'Individual'}
                     </div>
                   </td>
-                  <td style={{ color: 'white' }}>{opticalProductLabel(sale.servico_nome)}</td>
+                  <td style={{ color: 'var(--text-primary)' }}>{opticalProductLabel(sale.servico_nome)}</td>
                   <td>{seller?.nome}</td>
                   <td>{sale.parcelas}x</td>
                   <td>
@@ -179,7 +180,7 @@ export default function SalesPage() {
                       {sale.status === 'fechado' ? 'Fechado' : 'Em Negociação'}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'right', paddingRight: 0, fontWeight: 700, color: 'white' }}>
+                  <td style={{ textAlign: 'right', paddingRight: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
                     R$ {sale.valor.toLocaleString('pt-BR')}
                   </td>
                 </tr>
@@ -195,6 +196,7 @@ export default function SalesPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* --- MODAL: Create Sale --- */}
@@ -210,11 +212,11 @@ export default function SalesPage() {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <form 
+          <form
             onSubmit={handleCreateSale}
             style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '480px',
@@ -226,11 +228,11 @@ export default function SalesPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>Registrar Venda / Contrato</h3>
-              <button 
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Registrar Venda / Contrato</h3>
+              <button
                 type="button"
                 onClick={() => setIsNewSaleModalOpen(false)}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px' }}
+                style={{ color: 'var(--text-muted)', fontSize: '20px' }}
               >
                 ✕
               </button>
@@ -238,14 +240,14 @@ export default function SalesPage() {
 
             {/* Lead selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Selecionar Cliente *
               </label>
               <select
                 required
                 value={leadId}
                 onChange={(e) => setLeadId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Escolha o Cliente --</option>
                 {leads.map(lead => (
@@ -258,13 +260,13 @@ export default function SalesPage() {
 
             {/* Service Name */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Produto vendido
               </label>
               <select
                 value={serviceName}
                 onChange={(e) => setServiceName(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="Óculos completos">Óculos completos</option>
                 <option value="Lentes">Lentes</option>
@@ -276,13 +278,13 @@ export default function SalesPage() {
 
             {/* Vendedor selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Vendedor / Responsável
               </label>
               <select
                 value={vendedorId}
                 onChange={(e) => setVendedorId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 {team.map(member => (
                   <option key={member.id} value={member.id}>
@@ -295,41 +297,41 @@ export default function SalesPage() {
             {/* Value & Installments */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Valor do Contrato (R$) *
                 </label>
-                <input 
+                <input
                   type="number"
                   required
                   value={value}
                   onChange={(e) => setValue(Number(e.target.value))}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Número de Parcelas
                 </label>
-                <input 
+                <input
                   type="number"
                   min="1"
                   max="12"
                   value={installments}
                   onChange={(e) => setInstallments(Number(e.target.value))}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
 
             {/* Status */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Status da Transação
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="fechado">Venda concluída</option>
                 <option value="negociacao">Em Negociação</option>
@@ -338,12 +340,12 @@ export default function SalesPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsNewSaleModalOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -352,11 +354,11 @@ export default function SalesPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 style={{
                   background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',

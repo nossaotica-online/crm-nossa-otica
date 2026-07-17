@@ -8,7 +8,7 @@ import { Lead, LeadStatus, LeadOrigem } from '@/types';
 export default function LeadsPage() {
   const { leads, updateLeadStatus, addLead, team } = useCRM();
   const [isMounted, setIsMounted] = useState(false);
-  
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -68,7 +68,7 @@ export default function LeadsPage() {
     return (
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Clientes</h1>
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function LeadsPage() {
 
 
   // Filter leads by search query
-  const filteredLeads = leads.filter(lead => 
+  const filteredLeads = leads.filter(lead =>
     lead.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (lead.telefone && lead.telefone.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (lead.empresa && lead.empresa.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -87,11 +87,11 @@ export default function LeadsPage() {
 
   return (
     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', minHeight: 'calc(100vh - var(--header-height))' }}>
-      
+
       {/* Header section */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="mobile-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Clientes</h1>
         </div>
 
@@ -104,25 +104,25 @@ export default function LeadsPage() {
                 <path d="M21 21l-4.35-4.35" />
               </svg>
             </span>
-            <input 
-              type="text" 
-              placeholder="Buscar por nome, telefone ou indicação..." 
+            <input
+              type="text"
+              placeholder="Buscar por nome, telefone ou indicação..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                background: '#16161d',
-                border: '1px solid rgba(255,255,255,0.05)',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '100px',
                 padding: '8px 12px 8px 36px',
-                color: 'white',
+                color: 'var(--text-primary)',
                 fontSize: '12.5px',
                 outline: 'none'
               }}
             />
           </div>
 
-          <button 
+          <button
             onClick={() => setIsNewLeadModalOpen(true)}
             className="btn btn-primary"
             style={{ fontWeight: 700, padding: '10px 20px' }}
@@ -133,10 +133,10 @@ export default function LeadsPage() {
       </div>
 
       {/* Kanban Board Container */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '16px', 
-        overflowX: 'auto', 
+      <div className="kanban-mobile" style={{
+        display: 'flex',
+        gap: '16px',
+        overflowX: 'auto',
         paddingBottom: '16px',
         flex: 1,
         alignItems: 'flex-start'
@@ -147,7 +147,7 @@ export default function LeadsPage() {
           const columnTotalValue = columnLeads.reduce((sum, l) => sum + (l.valor_estimado || 0), 0);
 
           return (
-            <div 
+            <div
               key={columnId}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -155,12 +155,12 @@ export default function LeadsPage() {
                 e.currentTarget.style.borderColor = 'rgba(201, 169, 110, 0.15)';
               }}
               onDragLeave={(e) => {
-                e.currentTarget.style.background = '#13131a';
+                e.currentTarget.style.background = 'var(--bg-card)';
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)';
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                e.currentTarget.style.background = '#13131a';
+                e.currentTarget.style.background = 'var(--bg-card)';
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)';
                 const leadId = e.dataTransfer.getData('text/plain');
                 if (leadId) {
@@ -174,10 +174,10 @@ export default function LeadsPage() {
               style={{
                 width: '280px',
                 flexShrink: 0,
-                background: '#13131a',
+                background: 'var(--bg-card)',
                 borderRadius: '16px',
                 padding: '16px',
-                border: '1px solid rgba(255,255,255,0.03)',
+                border: '1px solid var(--glass-border)',
                 borderTop: `3px solid ${colConfig.color}`,
                 boxShadow: `inset 0 18px 32px -30px ${colConfig.color}`,
                 display: 'flex',
@@ -196,10 +196,10 @@ export default function LeadsPage() {
                     borderRadius: '50%',
                     backgroundColor: colConfig.color
                   }}></span>
-                  <h3 style={{ fontSize: '13.5px', fontWeight: 700, color: 'white' }}>{colConfig.label}</h3>
+                  <h3 style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>{colConfig.label}</h3>
                   <span style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    color: 'rgba(255,255,255,0.4)',
+                    background: 'var(--surface-hover)',
+                    color: 'var(--text-muted)',
                     padding: '2px 6px',
                     borderRadius: '100px',
                     fontSize: '10px',
@@ -218,15 +218,15 @@ export default function LeadsPage() {
               )}
 
               {/* Cards Container */}
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '10px', 
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
                 overflowY: 'auto',
                 paddingRight: '2px'
               }}>
                 {columnLeads.map((lead) => (
-                  <div 
+                  <div
                     key={lead.id}
                     onClick={() => setSelectedLead(lead)}
                     draggable="true"
@@ -238,8 +238,8 @@ export default function LeadsPage() {
                       e.currentTarget.style.opacity = '1';
                     }}
                     style={{
-                      background: '#1c1c24',
-                      border: '1px solid rgba(255,255,255,0.03)',
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--glass-border)',
                       borderRadius: '12px',
                       padding: '14px',
                       cursor: 'grab',
@@ -258,9 +258,9 @@ export default function LeadsPage() {
                     }}
                   >
                     <div>
-                      <h4 style={{ fontSize: '13.5px', fontWeight: 600, color: 'white', margin: 0 }}>{lead.nome}</h4>
+                      <h4 style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{lead.nome}</h4>
                       {lead.empresa && (
-                        <span style={{ fontSize: '10.5px', color: 'rgba(255,255,255,0.4)', display: 'block', marginTop: '2px' }}>
+                        <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
                           {lead.empresa}
                         </span>
                       )}
@@ -268,9 +268,9 @@ export default function LeadsPage() {
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
                       <span style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        color: 'rgba(255,255,255,0.6)',
+                        background: 'var(--surface-subtle)',
+                        border: '1px solid var(--glass-border)',
+                        color: 'var(--text-secondary)',
                         padding: '2px 6px',
                         borderRadius: '4px',
                         fontSize: '9.5px',
@@ -280,7 +280,7 @@ export default function LeadsPage() {
                       </span>
 
                       {lead.valor_estimado && (
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'white' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           R$ {lead.valor_estimado.toLocaleString('pt-BR')}
                         </span>
                       )}
@@ -330,8 +330,8 @@ export default function LeadsPage() {
           padding: '20px'
         }}>
           <div style={{
-            background: '#16161d',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--glass-border-strong)',
             borderRadius: '20px',
             width: '100%',
             maxWidth: '550px',
@@ -341,20 +341,20 @@ export default function LeadsPage() {
             flexDirection: 'column',
             gap: '20px'
           }}>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <span style={{ fontSize: '11px', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px' }}>
                   Ficha do Cliente
                 </span>
-                <h3 style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginTop: '4px' }}>
+                <h3 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
                   {selectedLead.nome}
                 </h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedLead(null)}
                 style={{
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'var(--text-muted)',
                   fontSize: '20px',
                   padding: '4px'
                 }}
@@ -364,9 +364,9 @@ export default function LeadsPage() {
             </div>
 
             {/* Status Selector Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#101014', padding: '12px 16px', borderRadius: '12px' }}>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Status do Funil:</span>
-              <select 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Status do Funil:</span>
+              <select
                 value={selectedLead.status}
                 onChange={(e) => {
                   const val = e.target.value as LeadStatus;
@@ -379,7 +379,7 @@ export default function LeadsPage() {
                 }}
                 style={{
                   background: 'transparent',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   border: 'none',
                   fontSize: '13.5px',
                   fontWeight: 700,
@@ -388,7 +388,7 @@ export default function LeadsPage() {
                 }}
               >
                 {KANBAN_COLUMN_ORDER.map(status => (
-                  <option key={status} value={status} style={{ background: '#16161d' }}>
+                  <option key={status} value={status} style={{ background: 'var(--bg-card)' }}>
                     {LEAD_STATUS_CONFIG[status].label}
                   </option>
                 ))}
@@ -398,23 +398,23 @@ export default function LeadsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '13px' }}>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '2px' }}>Quem indicou</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{selectedLead.empresa || 'Não informada'}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.empresa || 'Não informada'}</span>
               </div>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '2px' }}>Parentesco/relação</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{selectedLead.segmento || 'Não informado'}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.segmento || 'Não informado'}</span>
               </div>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '2px' }}>WhatsApp / Telefone</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{selectedLead.telefone || 'Não informado'}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.telefone || 'Não informado'}</span>
               </div>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '2px' }}>E-mail</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{selectedLead.email || 'Não informado'}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.email || 'Não informado'}</span>
               </div>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '2px' }}>Origem</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{LEAD_ORIGEM_LABELS[selectedLead.origem]}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{LEAD_ORIGEM_LABELS[selectedLead.origem]}</span>
               </div>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '2px' }}>Valor Comercial</span>
@@ -427,19 +427,19 @@ export default function LeadsPage() {
             {/* Quiz Responses */}
             {selectedLead.respostas_quiz && selectedLead.respostas_quiz.length > 0 && (
               <div style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.04)',
+                background: 'var(--surface-subtle)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '12px',
                 padding: '16px'
               }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'white', marginBottom: '12px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
                   Respostas do Quiz de Qualificação (Nossa Ótica)
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {selectedLead.respostas_quiz.map((resp, i) => (
                     <div key={i} style={{ fontSize: '12.5px' }}>
-                      <div style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>{resp.pergunta}</div>
-                      <div style={{ color: 'white', fontWeight: 600, marginTop: '2px' }}>{resp.resposta}</div>
+                      <div style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{resp.pergunta}</div>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>{resp.resposta}</div>
                     </div>
                   ))}
                 </div>
@@ -448,17 +448,17 @@ export default function LeadsPage() {
 
             <div>
               <span style={{ color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: '6px', fontSize: '13px' }}>Notas Internas</span>
-              <p style={{ background: '#101014', padding: '12px', borderRadius: '8px', fontSize: '12.5px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: '1.4' }}>
+              <p style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>
                 {selectedLead.notas || 'Sem observações adicionais.'}
               </p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <button 
+              <button
                 onClick={() => setSelectedLead(null)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -486,11 +486,11 @@ export default function LeadsPage() {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <form 
+          <form
             onSubmit={handleCreateLead}
             style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '500px',
@@ -502,93 +502,93 @@ export default function LeadsPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>Novo Cliente</h3>
-              <button 
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Novo Cliente</h3>
+              <button
                 type="button"
                 onClick={() => setIsNewLeadModalOpen(false)}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px' }}
+                style={{ color: 'var(--text-muted)', fontSize: '20px' }}
               >
                 ✕
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Nome do Cliente *
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 required
                 value={newLeadName}
                 onChange={(e) => setNewLeadName(e.target.value)}
                 placeholder="Ex: Roberto Silva"
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   WhatsApp / Telefone
                 </label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={newLeadPhone}
                   onChange={(e) => setNewLeadPhone(e.target.value)}
                   placeholder="Ex: (11) 98888-7777"
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   E-mail
                 </label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={newLeadEmail}
                   onChange={(e) => setNewLeadEmail(e.target.value)}
                   placeholder="Ex: roberto@empresa.com"
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Quem indicou
                 </label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={newLeadCompany}
                   onChange={(e) => setNewLeadCompany(e.target.value)}
                   placeholder="Nome de quem fez a indicação"
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Parentesco/relação
                 </label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={newLeadSegment}
                   onChange={(e) => setNewLeadSegment(e.target.value)}
                   placeholder="Ex: amiga, irmã, cliente"
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Origem do Cliente
                 </label>
-                <select 
+                <select
                   value={newLeadOrigin}
                   onChange={(e) => setNewLeadOrigin(e.target.value as LeadOrigem)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 >
                   <option value="quiz-instagram">Instagram</option>
                   <option value="site">Site</option>
@@ -598,26 +598,26 @@ export default function LeadsPage() {
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Valor Estimado (R$)
                 </label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={newLeadValue}
                   onChange={(e) => setNewLeadValue(Number(e.target.value))}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Responsável pelo Cliente
               </label>
-              <select 
+              <select
                 value={newLeadResponsavelId}
                 onChange={(e) => setNewLeadResponsavelId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">Selecione o responsável...</option>
                 {team.map(member => (
@@ -627,17 +627,17 @@ export default function LeadsPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>Observações</label>
-              <textarea value={newLeadNotes} onChange={(e) => setNewLeadNotes(e.target.value)} placeholder="Preferências, receita, necessidades ou observações do atendimento" rows={3} style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none', resize: 'vertical' }} />
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Observações</label>
+              <textarea value={newLeadNotes} onChange={(e) => setNewLeadNotes(e.target.value)} placeholder="Preferências, receita, necessidades ou observações do atendimento" rows={3} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none', resize: 'vertical' }} />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsNewLeadModalOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -646,11 +646,11 @@ export default function LeadsPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 style={{
                   background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -678,12 +678,12 @@ export default function LeadsPage() {
           zIndex: 1000
         }}>
           <div style={{
-            background: '#13131a',
+            background: 'var(--bg-card)',
             padding: '32px',
             borderRadius: '24px',
             width: '100%',
             maxWidth: '400px',
-            border: '1px solid rgba(255,255,255,0.05)'
+            border: '1px solid var(--glass-border)'
           }}>
             <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Quem fechou essa venda?</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
@@ -692,16 +692,16 @@ export default function LeadsPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
               <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>Vendedor Responsável</label>
-              <select 
+              <select
                 value={selectedVendedor}
                 onChange={(e) => setSelectedVendedor(e.target.value)}
                 style={{
                   width: '100%',
-                  background: '#1c1c24',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--glass-border-strong)',
                   borderRadius: '12px',
                   padding: '12px 16px',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   fontSize: '14px',
                   outline: 'none'
                 }}
@@ -714,7 +714,7 @@ export default function LeadsPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button 
+              <button
                 onClick={() => {
                   setClosingLeadId(null);
                   setSelectedVendedor('');
@@ -722,7 +722,7 @@ export default function LeadsPage() {
                 style={{
                   padding: '12px 24px',
                   background: 'transparent',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   border: 'none',
                   borderRadius: '12px',
                   cursor: 'pointer',
@@ -731,7 +731,7 @@ export default function LeadsPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={() => {
                   if (!selectedVendedor) {
                     alert('Por favor, selecione o vendedor.');
@@ -746,7 +746,7 @@ export default function LeadsPage() {
                 style={{
                   padding: '12px 24px',
                   background: '#ead7b1',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   border: 'none',
                   borderRadius: '12px',
                   cursor: 'pointer',

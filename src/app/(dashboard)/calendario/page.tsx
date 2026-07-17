@@ -15,14 +15,14 @@ const formatPhone = (value?: string | null) => {
 export default function CalendarPage() {
   const { bookings, clients, team, addBooking, updateBookingStatus, deleteBooking, tasks, addTask, updateTaskStatus, deleteTask } = useCRM();
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  
+
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
   }, []);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false);
-  
+
   const [activeTab, setActiveTab] = useState<'calls' | 'tasks'>('calls');
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
 
@@ -119,7 +119,7 @@ export default function CalendarPage() {
     return (
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Calendário & Agendamentos</h1>
         </div>
       </div>
@@ -170,16 +170,16 @@ export default function CalendarPage() {
 
   return (
     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="mobile-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Agenda & Diagnósticos</h1>
         </div>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
+          <button
             onClick={() => {
               setNewTaskDate(selectedDate);
               setIsNewTaskModalOpen(true);
@@ -189,7 +189,7 @@ export default function CalendarPage() {
           >
             + Nova Tarefa
           </button>
-          <button 
+          <button
             onClick={() => {
               setNewDate(selectedDate);
               setIsNewBookingModalOpen(true);
@@ -202,38 +202,38 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px', alignItems: 'start' }}>
-        
+      <div className="mobile-stack-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px', alignItems: 'start' }}>
+
         {/* Left Side: Calendar Month View */}
         <div className="glass-card" style={{ padding: '24px', borderRadius: '24px' }}>
-          
+
           {/* Calendar Month Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'white' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>
               {MONTH_LABELS[currentMonth]} {currentYear}
             </h3>
-            
+
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
+              <button
                 onClick={() => navigateMonth('prev')}
-                style={{ 
-                  padding: '8px 12px', 
-                  background: '#16161d', 
-                  border: '1px solid rgba(255,255,255,0.05)', 
+                style={{
+                  padding: '8px 12px',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--glass-border)',
                   borderRadius: '100px',
-                  color: 'white'
+                  color: 'var(--text-primary)'
                 }}
               >
                 &larr;
               </button>
-              <button 
+              <button
                 onClick={() => navigateMonth('next')}
-                style={{ 
-                  padding: '8px 12px', 
-                  background: '#16161d', 
-                  border: '1px solid rgba(255,255,255,0.05)', 
+                style={{
+                  padding: '8px 12px',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--glass-border)',
                   borderRadius: '100px',
-                  color: 'white'
+                  color: 'var(--text-primary)'
                 }}
               >
                 &rarr;
@@ -242,14 +242,14 @@ export default function CalendarPage() {
           </div>
 
           {/* Weekday Titles */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '12px' }}>
+          <div className="mobile-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '12px' }}>
             {WEEKDAY_SHORT.map(w => (
               <div key={w} style={{ padding: '8px 0' }}>{w}</div>
             ))}
           </div>
 
           {/* Days Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+          <div className="mobile-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
             {calendarCells.map((day, index) => {
               if (day === null) {
                 return <div key={`empty-${index}`} style={{ aspectRatio: '1.2' }}></div>;
@@ -262,7 +262,7 @@ export default function CalendarPage() {
               const hasBookings = dateBookings.length > 0;
               const dateTasks = tasks ? tasks.filter(t => t.data === dateStr) : [];
               const hasTasks = dateTasks.length > 0;
-              
+
               // Check if date is today
               const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
@@ -273,9 +273,9 @@ export default function CalendarPage() {
                   style={{
                     aspectRatio: '1.2',
                     borderRadius: '12px',
-                    background: isSelected ? 'var(--accent-primary)' : isToday ? '#212128' : 'rgba(255,255,255,0.01)',
+                    background: isSelected ? 'var(--accent-primary)' : isToday ? 'var(--bg-card-hover)' : 'var(--surface-subtle)',
                     border: isToday ? '1px solid rgba(201, 169, 110, 0.4)' : '1px solid rgba(255,255,255,0.03)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -288,13 +288,13 @@ export default function CalendarPage() {
                     if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = isToday ? '#212128' : 'rgba(255,255,255,0.01)';
+                    if (!isSelected) e.currentTarget.style.background = isToday ? 'var(--bg-card-hover)' : 'var(--surface-subtle)';
                   }}
                 >
                   <span style={{ fontSize: '14px', fontWeight: isToday || isSelected ? 700 : 500 }}>
                     {day}
                   </span>
-                  
+
                   {/* Indicator Dots */}
                   <div style={{ display: 'flex', gap: '4px', position: 'absolute', bottom: '6px' }}>
                     {hasBookings && (
@@ -323,24 +323,24 @@ export default function CalendarPage() {
 
         {/* Right Side: Booking Panel for Selected Date */}
         <div className="glass-card" style={{ padding: '24px', borderRadius: '24px', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-          
+
           <div style={{ marginBottom: '20px' }}>
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.5px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.5px' }}>
               Compromissos
             </span>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginTop: '4px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </h3>
           </div>
 
           {/* Tabs para Reuniões e Tarefas */}
-          <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '16px', paddingBottom: '4px' }}>
-            <button 
+          <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--glass-border)', marginBottom: '16px', paddingBottom: '4px' }}>
+            <button
               onClick={() => setActiveTab('calls')}
               style={{
                 fontSize: '13px',
                 fontWeight: 700,
-                color: activeTab === 'calls' ? 'white' : 'rgba(255,255,255,0.4)',
+                color: activeTab === 'calls' ? 'var(--text-primary)' : 'var(--text-muted)',
                 padding: '6px 0 10px 0',
                 borderBottom: activeTab === 'calls' ? '2px solid var(--accent-primary)' : '2px solid transparent',
                 cursor: 'pointer'
@@ -348,12 +348,12 @@ export default function CalendarPage() {
             >
               Reuniões ({selectedDateBookings.length})
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('tasks')}
               style={{
                 fontSize: '13px',
                 fontWeight: 700,
-                color: activeTab === 'tasks' ? 'white' : 'rgba(255,255,255,0.4)',
+                color: activeTab === 'tasks' ? 'var(--text-primary)' : 'var(--text-muted)',
                 padding: '6px 0 10px 0',
                 borderBottom: activeTab === 'tasks' ? '2px solid var(--accent-primary)' : '2px solid transparent',
                 cursor: 'pointer'
@@ -369,7 +369,7 @@ export default function CalendarPage() {
                 {selectedDateBookings.map((booking) => {
                   const client = clients.find(c => c.id === booking.client_id);
                   const consultor = team.find(t => t.id === booking.consultor_id);
-                  
+
                   // Status badges
                   const getStatusBadge = (status: BookingStatus, isGoogleCalendar?: boolean) => {
                     if (isGoogleCalendar) return { bg: 'rgba(234, 67, 53, 0.15)', color: '#ea4335', text: 'Google Agenda' };
@@ -381,19 +381,19 @@ export default function CalendarPage() {
                       case 'cancelado':
                         return { bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', text: 'Cancelado' };
                       default:
-                        return { bg: 'rgba(255, 255, 255, 0.1)', color: '#fff', text: status };
+                        return { bg: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)', text: status };
                     }
                   };
 
                   const badge = getStatusBadge(booking.status, booking.isGoogleCalendar);
 
                   return (
-                    <div 
+                    <div
                       key={booking.id}
                       onClick={() => setSelectedBooking(booking)}
                       style={{
-                        background: '#16161d',
-                        border: '1px solid rgba(255,255,255,0.03)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '16px',
                         padding: '16px',
                         display: 'flex',
@@ -407,19 +407,19 @@ export default function CalendarPage() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                          <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'white' }}>
+                          <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
                             {booking.horario_inicio} &mdash; {booking.horario_fim}
                           </span>
-                          <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'white', marginTop: '4px' }}>
+                          <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
                             {booking.isGoogleCalendar ? booking.title : (client?.name || 'Cliente externo')}
                           </h4>
                           {!booking.isGoogleCalendar && (client?.whatsapp || client?.secondary_phone) && (
-                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0 0' }}>
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                               {formatPhone(client.whatsapp || client.secondary_phone)}
                             </p>
                           )}
                           {booking.isGoogleCalendar && booking.notas && (
-                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {booking.notas}
                             </p>
                           )}
@@ -439,9 +439,9 @@ export default function CalendarPage() {
                       </div>
 
                       {booking.zoom_link && (
-                        <a 
-                          href={booking.zoom_link} 
-                          target="_blank" 
+                        <a
+                          href={booking.zoom_link}
+                          target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           style={{
@@ -466,19 +466,19 @@ export default function CalendarPage() {
                         </a>
                       )}
 
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '8px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: '8px' }}>
                         <span>Consultor: <strong>{consultor?.nome}</strong></span>
-                        
+
                         {/* Status updater quick buttons */}
                         {booking.status === 'confirmado' && !booking.isGoogleCalendar && (
                           <div style={{ display: 'flex', gap: '8px' }}>
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); updateBookingStatus(booking.id, 'realizado'); }}
                               style={{ color: '#10b981', fontWeight: 600 }}
                             >
                               Concluir
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); updateBookingStatus(booking.id, 'cancelado'); }}
                               style={{ color: '#ef4444', fontWeight: 600 }}
                             >
@@ -520,11 +520,11 @@ export default function CalendarPage() {
                   const isConcluida = task.status === 'concluida';
 
                   return (
-                    <div 
+                    <div
                       key={task.id}
                       style={{
-                        background: '#16161d',
-                        border: '1px solid rgba(255,255,255,0.03)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '16px',
                         padding: '16px',
                         display: 'flex',
@@ -561,24 +561,24 @@ export default function CalendarPage() {
                               </svg>
                             )}
                           </button>
-                          
+
                           <div style={{ flex: 1 }}>
-                            <h4 style={{ 
-                              fontSize: '14px', 
-                              fontWeight: 700, 
-                              color: 'white',
+                            <h4 style={{
+                              fontSize: '14px',
+                              fontWeight: 700,
+                              color: 'var(--text-primary)',
                               textDecoration: isConcluida ? 'line-through' : 'none',
                               margin: 0
                             }}>
                               {task.titulo}
                             </h4>
                             {client && (
-                              <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>
+                              <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                                 Cliente: <strong>{client.name}</strong>
                               </p>
                             )}
                             {task.descricao && (
-                              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '6px', whiteSpace: 'pre-wrap' }}>
+                              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px', whiteSpace: 'pre-wrap' }}>
                                 {task.descricao}
                               </p>
                             )}
@@ -598,13 +598,13 @@ export default function CalendarPage() {
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '8px', alignItems: 'center' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: '8px', alignItems: 'center' }}>
                         <span>Responsável: <strong>{responsavel?.nome || 'Não designado'}</strong></span>
-                        
-                        <button 
+
+                        <button
                           type="button"
-                          onClick={async (e) => { 
-                            e.stopPropagation(); 
+                          onClick={async (e) => {
+                            e.stopPropagation();
                             if (confirm('Deseja excluir esta tarefa?')) {
                               await deleteTask(task.id);
                             }
@@ -659,11 +659,11 @@ export default function CalendarPage() {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <form 
+          <form
             onSubmit={handleCreateBooking}
             style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '480px',
@@ -675,11 +675,11 @@ export default function CalendarPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>Agendar Diagnóstico / Reunião</h3>
-              <button 
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Agendar Diagnóstico / Reunião</h3>
+              <button
                 type="button"
                 onClick={() => setIsNewBookingModalOpen(false)}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px' }}
+                style={{ color: 'var(--text-muted)', fontSize: '20px' }}
               >
                 ✕
               </button>
@@ -687,14 +687,14 @@ export default function CalendarPage() {
 
             {/* Lead selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Selecionar Cliente *
               </label>
               <select
                 required
                 value={newClientId}
                 onChange={(e) => setNewClientId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Escolha um Cliente --</option>
                 {activeClients.map(client => (
@@ -704,7 +704,7 @@ export default function CalendarPage() {
                 ))}
               </select>
               {activeClients.length === 0 && (
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
                   Nenhum cliente cadastrado ainda. Cadastre primeiro na aba <strong>Clientes</strong>.
                 </p>
               )}
@@ -712,13 +712,13 @@ export default function CalendarPage() {
 
             {/* Consultor / Responsável selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Consultor Responsável
               </label>
               <select
                 value={newConsultorId}
                 onChange={(e) => setNewConsultorId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 {team.map(member => (
                   <option key={member.id} value={member.id}>
@@ -731,27 +731,27 @@ export default function CalendarPage() {
             {/* Date & Time */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Data *
                 </label>
-                <input 
+                <input
                   type="date"
                   required
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Horário de Início *
                 </label>
-                <input 
+                <input
                   type="time"
                   required
                   value={newTime}
                   onChange={(e) => setNewTime(e.target.value)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
@@ -759,13 +759,13 @@ export default function CalendarPage() {
             {/* Meeting Type & Zoom */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Tipo de Reunião
                 </label>
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value as BookingTipo)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 >
                   <option value="diagnostico">Exame de vista</option>
                   <option value="proposta">Entrega / Orçamento de óculos</option>
@@ -773,38 +773,38 @@ export default function CalendarPage() {
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Zoom Link
                 </label>
-                <input 
+                <input
                   type="url"
                   value={newZoomLink}
                   onChange={(e) => setNewZoomLink(e.target.value)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
 
             {/* Notes */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Observações
               </label>
               <textarea
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
                 placeholder="Detalhes sobre a conversa comercial..."
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none', minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none', minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
               />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsNewBookingModalOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -813,11 +813,11 @@ export default function CalendarPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 style={{
                   background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -845,11 +845,11 @@ export default function CalendarPage() {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <form 
+          <form
             onSubmit={handleCreateTask}
             style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '480px',
@@ -861,11 +861,11 @@ export default function CalendarPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>Criar Nova Tarefa</h3>
-              <button 
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Criar Nova Tarefa</h3>
+              <button
                 type="button"
                 onClick={() => setIsNewTaskModalOpen(false)}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px' }}
+                style={{ color: 'var(--text-muted)', fontSize: '20px' }}
               >
                 ✕
               </button>
@@ -873,13 +873,13 @@ export default function CalendarPage() {
 
             {/* Lead selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Selecionar Cliente
               </label>
               <select
                 value={newTaskClientId}
                 onChange={(e) => setNewTaskClientId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Sem Cliente Associado --</option>
                 {activeClients.map(client => (
@@ -892,13 +892,13 @@ export default function CalendarPage() {
 
             {/* Responsável selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Atribuir Responsável
               </label>
               <select
                 value={newTaskResponsavelId}
                 onChange={(e) => setNewTaskResponsavelId(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Não Atribuído --</option>
                 {team.map(member => (
@@ -911,14 +911,14 @@ export default function CalendarPage() {
 
             {/* Task Title Selector / Custom Input */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Qual tarefa que é? *
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <select
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 >
                   <option value="WhatsApp">WhatsApp (Falar com Cliente)</option>
                   <option value="Ligar">Ligar para o Cliente</option>
@@ -935,7 +935,7 @@ export default function CalendarPage() {
                     placeholder="Digite o título da tarefa..."
                     value={newTaskCustomTitle}
                     onChange={(e) => setNewTaskCustomTitle(e.target.value)}
-                    style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                    style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                   />
                 )}
               </div>
@@ -943,38 +943,38 @@ export default function CalendarPage() {
 
             {/* Date */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Data da Tarefa *
               </label>
-              <input 
+              <input
                 type="date"
                 required
                 value={newTaskDate}
                 onChange={(e) => setNewTaskDate(e.target.value)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
             {/* Description */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Descrição explicativa
               </label>
               <textarea
                 value={newTaskDescription}
                 onChange={(e) => setNewTaskDescription(e.target.value)}
                 placeholder="Explique o que precisa ser feito nesta tarefa..."
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none', minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none', minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
               />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsNewTaskModalOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -983,11 +983,11 @@ export default function CalendarPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 style={{
                   background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -1018,8 +1018,8 @@ export default function CalendarPage() {
             padding: '20px'
           }}>
             <div style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '560px',
@@ -1030,11 +1030,11 @@ export default function CalendarPage() {
               gap: '24px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white', margin: 0 }}>Detalhes do Agendamento</h3>
-                <button 
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Detalhes do Agendamento</h3>
+                <button
                   type="button"
                   onClick={() => setSelectedBooking(null)}
-                  style={{ color: 'rgba(255,255,255,0.4)', fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }}
+                  style={{ color: 'var(--text-muted)', fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   ✕
                 </button>
@@ -1042,33 +1042,33 @@ export default function CalendarPage() {
 
               {/* Lead Info */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Informações do Cliente
                 </span>
-                <div style={{ background: '#1c1c24', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'white' }}>{client?.name || 'Cliente externo'}</div>
-                  {(client?.whatsapp || client?.secondary_phone) && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Telefone: <strong style={{ color: 'white' }}>{formatPhone(client.whatsapp || client.secondary_phone)}</strong></div>}
-                  {client?.email && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>E-mail: <strong style={{ color: 'white' }}>{client.email}</strong></div>}
-                  {client?.notes && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Observações: <strong style={{ color: 'white' }}>{client.notes}</strong></div>}
+                <div style={{ background: 'var(--bg-tertiary)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{client?.name || 'Cliente externo'}</div>
+                  {(client?.whatsapp || client?.secondary_phone) && <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Telefone: <strong style={{ color: 'var(--text-primary)' }}>{formatPhone(client.whatsapp || client.secondary_phone)}</strong></div>}
+                  {client?.email && <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>E-mail: <strong style={{ color: 'var(--text-primary)' }}>{client.email}</strong></div>}
+                  {client?.notes && <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Observações: <strong style={{ color: 'var(--text-primary)' }}>{client.notes}</strong></div>}
                 </div>
               </div>
 
               {/* Booking Info */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Detalhes da Reunião
                 </span>
-                <div style={{ background: '#1c1c24', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Data: <strong style={{ color: 'white' }}>{selectedBooking.data.split('-').reverse().join('/')}</strong></div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Horário: <strong style={{ color: 'white' }}>{selectedBooking.horario_inicio} - {selectedBooking.horario_fim}</strong></div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Consultor: <strong style={{ color: 'white' }}>{consultor?.nome || 'Não definido'}</strong></div>
+                <div style={{ background: 'var(--bg-tertiary)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Data: <strong style={{ color: 'var(--text-primary)' }}>{selectedBooking.data.split('-').reverse().join('/')}</strong></div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Horário: <strong style={{ color: 'var(--text-primary)' }}>{selectedBooking.horario_inicio} - {selectedBooking.horario_fim}</strong></div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Consultor: <strong style={{ color: 'var(--text-primary)' }}>{consultor?.nome || 'Não definido'}</strong></div>
                   {selectedBooking.zoom_link && (
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Zoom: <a href={selectedBooking.zoom_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Entrar na Reunião</a></div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Zoom: <a href={selectedBooking.zoom_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Entrar na Reunião</a></div>
                   )}
                   {selectedBooking.notas && (
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginTop: '4px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '8px' }}>
-                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: '2px' }}>Observações:</span>
-                      <span style={{ color: 'white', whiteSpace: 'pre-wrap' }}>{selectedBooking.notas}</span>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', borderTop: '1px solid var(--glass-border)', paddingTop: '8px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Observações:</span>
+                      <span style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{selectedBooking.notas}</span>
                     </div>
                   )}
                 </div>
@@ -1101,13 +1101,13 @@ export default function CalendarPage() {
                 >
                   Excluir Agendamento
                 </button>
-                
-                <button 
+
+                <button
                   type="button"
                   onClick={() => setSelectedBooking(null)}
                   style={{
                     background: 'var(--accent-primary)',
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     borderRadius: '100px',
                     padding: '10px 20px',
                     fontSize: '13px',

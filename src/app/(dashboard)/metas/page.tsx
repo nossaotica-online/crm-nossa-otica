@@ -6,7 +6,7 @@ import { Goal, GoalTipo, GoalPeriodo } from '@/types';
 
 export default function GoalsPage() {
   const { goals, addGoal, updateGoalProgress, updateGoalTarget, deleteGoal } = useCRM();
-  
+
   // Modal State for new goal
   const [isNewGoalModalOpen, setIsNewGoalModalOpen] = useState(false);
   const [newGoalType, setNewGoalType] = useState<GoalTipo>('faturamento');
@@ -67,7 +67,7 @@ export default function GoalsPage() {
     return (
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Metas & Performance</h1>
         </div>
       </div>
@@ -76,18 +76,18 @@ export default function GoalsPage() {
 
   return (
     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="mobile-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Nossa Ótica CRM</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
           <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Metas & Performance</h1>
         </div>
         <button
           onClick={() => setIsNewGoalModalOpen(true)}
           style={{
             background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-            color: 'white',
+            color: 'var(--text-primary)',
             borderRadius: '100px',
             padding: '12px 24px',
             fontSize: '13.5px',
@@ -112,7 +112,7 @@ export default function GoalsPage() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '60px 20px',
-          background: '#13131a',
+          background: 'var(--bg-card)',
           border: '1px dashed rgba(255,255,255,0.1)',
           borderRadius: '24px',
           textAlign: 'center',
@@ -136,7 +136,7 @@ export default function GoalsPage() {
             </svg>
           </div>
           <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'white', margin: '0 0 8px 0' }}>Nenhuma meta definida</h3>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Nenhuma meta definida</h3>
             <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', maxWidth: '400px', margin: 0 }}>
               Crie metas de faturamento, clientes convertidos ou vendas para acompanhar o progresso comercial da ótica.
             </p>
@@ -145,7 +145,7 @@ export default function GoalsPage() {
             onClick={() => setIsNewGoalModalOpen(true)}
             style={{
               background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-              color: 'white',
+              color: 'var(--text-primary)',
               borderRadius: '100px',
               padding: '10px 20px',
               fontSize: '13px',
@@ -159,18 +159,18 @@ export default function GoalsPage() {
         </div>
       ) : (
         /* Goals grid */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}>
+        <div className="mobile-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}>
           {goals.map((goal) => {
             const percentage = Math.min(Math.round((goal.valor_atual / goal.meta_valor) * 100), 100);
-            
+
             return (
-              <div 
-                key={goal.id} 
-                className="glass-card" 
-                style={{ 
-                  borderRadius: '20px', 
-                  background: '#13131a', 
-                  border: '1px solid rgba(255,255,255,0.05)',
+              <div
+                key={goal.id}
+                className="glass-card"
+                style={{
+                  borderRadius: '20px',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--glass-border)',
                   padding: '24px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -218,24 +218,24 @@ export default function GoalsPage() {
                     }}>
                       Meta Coletiva ({goal.periodo})
                     </span>
-                    
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginTop: '8px' }}>
-                      {goal.tipo === 'faturamento' 
-                        ? 'Meta de Faturamento' 
-                        : goal.tipo === 'leads_convertidos' 
-                        ? 'Clientes Convertidos' 
+
+                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px' }}>
+                      {goal.tipo === 'faturamento'
+                        ? 'Meta de Faturamento'
+                        : goal.tipo === 'leads_convertidos'
+                        ? 'Clientes Convertidos'
                         : 'Meta de Vendas'}
                     </h3>
                   </div>
 
-                  <span style={{ fontSize: '24px', fontWeight: 800, color: 'white' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
                     {percentage}%
                   </span>
                 </div>
 
                 {/* Progress Bar */}
                 <div>
-                  <div style={{ height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '100px', overflow: 'hidden' }}>
+                  <div style={{ height: '8px', background: 'var(--surface-subtle)', borderRadius: '100px', overflow: 'hidden' }}>
                     <div style={{
                       width: `${percentage}%`,
                       height: '100%',
@@ -245,8 +245,8 @@ export default function GoalsPage() {
                       transition: 'width 0.4s ease'
                     }}></div>
                   </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
                     <span>
                       Progresso: <strong>
                         {goal.tipo === 'faturamento' ? `R$ ${goal.valor_atual.toLocaleString('pt-BR')}` : `${goal.valor_atual}`}
@@ -260,7 +260,7 @@ export default function GoalsPage() {
                   </div>
                 </div>
 
-                <hr style={{ border: 'none', height: '1px', background: 'rgba(255,255,255,0.05)', margin: 0 }} />
+                <hr style={{ border: 'none', height: '1px', background: 'var(--surface-hover)', margin: 0 }} />
 
                 {/* Edit Section */}
                 <div>
@@ -270,26 +270,26 @@ export default function GoalsPage() {
                         {editType === 'progress' ? 'Novo Valor Atual' : 'Novo Alvo da Meta'}
                       </label>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <input 
+                        <input
                           type="number"
                           value={editingValue}
                           onChange={(e) => setEditingValue(Number(e.target.value))}
                           style={{
-                            background: '#16161d',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--glass-border-strong)',
                             borderRadius: '8px',
                             padding: '8px 12px',
-                            color: 'white',
+                            color: 'var(--text-primary)',
                             fontSize: '13px',
                             flex: 1,
                             outline: 'none'
                           }}
                         />
-                        <button 
+                        <button
                           onClick={() => handleSaveEdit(goal.id)}
                           style={{
                             background: '#10b981',
-                            color: 'white',
+                            color: 'var(--text-primary)',
                             borderRadius: '8px',
                             padding: '8px 16px',
                             fontSize: '12.5px',
@@ -300,14 +300,14 @@ export default function GoalsPage() {
                         >
                           Salvar
                         </button>
-                        <button 
+                        <button
                           onClick={() => {
                             setEditingGoalId(null);
                             setEditType(null);
                           }}
                           style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            color: 'white',
+                            background: 'var(--surface-hover)',
+                            color: 'var(--text-primary)',
                             borderRadius: '8px',
                             padding: '8px 16px',
                             fontSize: '12.5px',
@@ -322,16 +322,16 @@ export default function GoalsPage() {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', gap: '12px' }}>
-                      <button 
+                      <button
                         onClick={() => {
                           setEditingGoalId(goal.id);
                           setEditType('progress');
                           setEditingValue(goal.valor_atual);
                         }}
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.05)',
-                          color: 'white',
+                          background: 'var(--surface-subtle)',
+                          border: '1px solid var(--glass-border)',
+                          color: 'var(--text-primary)',
                           borderRadius: '8px',
                           padding: '10px',
                           flex: 1,
@@ -343,7 +343,7 @@ export default function GoalsPage() {
                       >
                         Ajustar Progresso
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setEditingGoalId(goal.id);
                           setEditType('target');
@@ -387,11 +387,11 @@ export default function GoalsPage() {
           zIndex: 1000,
           padding: '20px'
         }}>
-          <form 
+          <form
             onSubmit={handleCreateGoal}
             style={{
-              background: '#16161d',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--glass-border-strong)',
               borderRadius: '20px',
               width: '100%',
               maxWidth: '450px',
@@ -403,8 +403,8 @@ export default function GoalsPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>Definir Nova Meta</h3>
-              <button 
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Definir Nova Meta</h3>
+              <button
                 type="button"
                 onClick={() => setIsNewGoalModalOpen(false)}
                 style={{ color: 'var(--text-secondary)', fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -417,14 +417,14 @@ export default function GoalsPage() {
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Tipo de Meta
               </label>
-              <select 
+              <select
                 value={newGoalType}
                 onChange={(e) => {
                   const type = e.target.value as GoalTipo;
                   setNewGoalType(type);
                   setNewGoalValue(type === 'faturamento' ? 10000 : 10);
                 }}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="faturamento">Faturamento (R$)</option>
                 <option value="leads_convertidos">Clientes Convertidos (Quantidade)</option>
@@ -436,13 +436,13 @@ export default function GoalsPage() {
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Valor Alvo (Meta)
               </label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 required
                 value={newGoalValue}
                 onChange={(e) => setNewGoalValue(Number(e.target.value))}
                 placeholder={newGoalType === 'faturamento' ? 'Ex: 20000' : 'Ex: 50'}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
             </div>
 
@@ -450,10 +450,10 @@ export default function GoalsPage() {
               <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Período
               </label>
-              <select 
+              <select
                 value={newGoalPeriod}
                 onChange={(e) => setNewGoalPeriod(e.target.value as GoalPeriodo)}
-                style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="semanal">Semanal</option>
                 <option value="mensal">Mensal</option>
@@ -466,35 +466,35 @@ export default function GoalsPage() {
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Data de Início
                 </label>
-                <input 
+                <input
                   type="date"
                   required
                   value={newGoalStart}
                   onChange={(e) => setNewGoalStart(e.target.value)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                   Data Limite
                 </label>
-                <input 
+                <input
                   type="date"
                   required
                   value={newGoalEnd}
                   onChange={(e) => setNewGoalEnd(e.target.value)}
-                  style={{ background: '#1c1c24', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', color: 'white', fontSize: '13.5px', outline: 'none' }}
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsNewGoalModalOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'white',
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
@@ -505,11 +505,11 @@ export default function GoalsPage() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 style={{
                   background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   borderRadius: '100px',
                   padding: '10px 20px',
                   fontSize: '13px',
