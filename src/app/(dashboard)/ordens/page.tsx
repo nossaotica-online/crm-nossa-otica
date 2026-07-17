@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ClientRecord, ServiceOrder, ServiceOrderStatus } from '@/types/clients';
+import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import styles from '../clientes/clientes.module.css';
 
 const PRODUCT_OPTIONS = [
@@ -125,6 +126,34 @@ export default function OrdensPage() {
     setClientTerm('');
   };
 
+  const exportOrders = () => {
+    if (orders.length === 0) { setNotice('Nenhuma ordem para exportar ainda.'); return; }
+    const grau = (od: number | null, cyl: number | null, axis: number | null, add: number | null) =>
+      [od, cyl, axis, add].some((v) => v !== null) ? `Esf ${od ?? '-'} / Cil ${cyl ?? '-'} / Eixo ${axis ?? '-'} / Ad ${add ?? '-'}` : '';
+    const csv = toCsv(orders, [
+      { label: 'Nº O.S.', value: (o) => o.os_number },
+      { label: 'Cliente', value: (o) => o.client_name },
+      { label: 'CPF', value: (o) => o.cpf },
+      { label: 'RG', value: (o) => o.rg },
+      { label: 'Telefone', value: (o) => formatPhone(o.phone) },
+      { label: 'Produto', value: (o) => o.product_type },
+      { label: 'Armação', value: (o) => o.frame_description },
+      { label: 'Lente', value: (o) => o.lens_description },
+      { label: 'Grau OD', value: (o) => grau(o.od_sphere, o.od_cylinder, o.od_axis, o.od_addition) },
+      { label: 'Grau OE', value: (o) => grau(o.oe_sphere, o.oe_cylinder, o.oe_axis, o.oe_addition) },
+      { label: 'DNP', value: (o) => o.dnp },
+      { label: 'Total', value: (o) => brl(o.total) },
+      { label: 'Entrada', value: (o) => brl(o.down_payment) },
+      { label: 'Saldo', value: (o) => brl((o.total || 0) - (o.down_payment || 0)) },
+      { label: 'Status', value: (o) => statusInfo(o.status).label },
+      { label: 'Entrega', value: (o) => formatDate(o.delivery_date) },
+      { label: 'Observações', value: (o) => o.notes },
+      { label: 'Criada em', value: (o) => formatDate(o.created_at) },
+    ]);
+    downloadFile(`ordens-servico-${todayStamp()}.csv`, csv);
+    setNotice(`Backup de ${orders.length} ordem(ns) baixado. Guarde o arquivo em local seguro.`);
+  };
+
   const openNew = () => { setEditingId(null); setForm(EMPTY_FORM); setClientTerm(''); setError(''); setFormOpen(true); };
 
   const openEdit = (order: ServiceOrder) => {
@@ -210,7 +239,10 @@ export default function OrdensPage() {
           <h1>Ordens de Serviço</h1>
           <p>Pedidos da ótica: cliente, grau, produto, valores e entrega.</p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>+ Nova O.S.</button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" onClick={exportOrders} title="Baixar todas as ordens (backup, abre no Excel)">⬇ Exportar</button>
+          <button className="btn btn-primary" onClick={openNew}>+ Nova O.S.</button>
+        </div>
       </header>
 
       {error && <div className={styles.errorBanner}>{error}<button onClick={() => setError('')}>×</button></div>}

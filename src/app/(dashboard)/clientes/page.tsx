@@ -13,6 +13,7 @@ import type {
   PrescriptionFormValues,
   RelationshipType,
 } from '@/types/clients';
+import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import styles from './clientes.module.css';
 
 const PAGE_SIZE = 10;
@@ -257,6 +258,29 @@ export default function ClientesPage() {
   useEffect(() => { setPage(1); }, [search, showArchived, letterFilter]);
   const pageCount = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
   const paginatedClients = filteredClients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const exportClients = () => {
+    if (clients.length === 0) { setNotice('Nenhum cliente para exportar ainda.'); return; }
+    const csv = toCsv(clients, [
+      { label: 'Nome', value: (c) => c.name },
+      { label: 'WhatsApp', value: (c) => formatPhone(c.whatsapp) },
+      { label: 'Telefone recado', value: (c) => formatPhone(c.secondary_phone) },
+      { label: 'CPF', value: (c) => c.cpf },
+      { label: 'RG', value: (c) => c.rg },
+      { label: 'Nascimento', value: (c) => (c.birth_date ? formatDate(c.birth_date) : '') },
+      { label: 'E-mail', value: (c) => c.email },
+      { label: 'Origem', value: (c) => sourceLabel(c.source) },
+      { label: 'Detalhe da origem', value: (c) => c.source_details },
+      { label: 'Produtos de interesse', value: (c) => c.product_interests.map(productLabel).join(', ') },
+      { label: 'Indicado por', value: (c) => clientById(c.referred_by_client_id)?.name || '' },
+      { label: 'Grupo familiar', value: (c) => groupById(c.family_group_id)?.name || '' },
+      { label: 'Observações', value: (c) => c.notes },
+      { label: 'Status', value: (c) => (c.status === 'archived' ? 'Arquivado' : 'Ativo') },
+      { label: 'Cadastrado em', value: (c) => formatDate(c.created_at) },
+    ]);
+    downloadFile(`clientes-nossa-otica-${todayStamp()}.csv`, csv);
+    setNotice(`Backup de ${clients.length} cliente(s) baixado. Guarde o arquivo em local seguro (Google Drive, e-mail).`);
+  };
 
   const openNewClient = () => {
     setEditingId(null);
@@ -517,7 +541,10 @@ export default function ClientesPage() {
           <h1>Clientes</h1>
           <p>Cadastro central de clientes, indicações e famílias.</p>
         </div>
-        <button className="btn btn-primary" onClick={openNewClient}>+ Novo cliente</button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" onClick={exportClients} title="Baixar todos os clientes (backup, abre no Excel)">⬇ Exportar</button>
+          <button className="btn btn-primary" onClick={openNewClient}>+ Novo cliente</button>
+        </div>
       </header>
 
       {error && <div className={styles.errorBanner}>{error}<button onClick={() => setError('')}>×</button></div>}
