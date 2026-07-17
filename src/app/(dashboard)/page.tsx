@@ -7,7 +7,7 @@ import { Lead, LeadStatus, LeadOrigem } from '@/types';
 import Link from 'next/link';
 
 export default function DashboardPage() {
-  const { leads, bookings, sales, goals, addLead, team } = useCRM();
+  const { leads, clients, bookings, sales, goals, addLead, team } = useCRM();
   const [timeFilter, setTimeFilter] = useState<'today' | 'week'>('week');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -86,6 +86,30 @@ export default function DashboardPage() {
   const siteShare = totalClosedSalesVal > 0 ? (siteSales / totalClosedSalesVal) * 100 : 0;
   const indicacaoShare = totalClosedSalesVal > 0 ? (indicacaoSales / totalClosedSalesVal) * 100 : 0;
   const outrasShare = totalClosedSalesVal > 0 ? (outrasSales / totalClosedSalesVal) * 100 : 0;
+
+  // Clientes por origem (ramo ótica): conta o cadastro de Clientes — mexe a cada cliente novo.
+  const totalClientsCount = clients.length;
+  const clientsIndicacao = clients.filter((c) => c.source === 'indicacao').length;
+  const clientsMidia = clients.filter((c) => ['meta', 'google', 'instagram'].includes(c.source)).length;
+  const clientsLoja = clients.filter((c) => c.source === 'loja').length;
+  const clientsOutras = totalClientsCount - clientsIndicacao - clientsMidia - clientsLoja;
+  const clientShare = (count: number) => (totalClientsCount > 0 ? (count / totalClientsCount) * 100 : 0);
+
+  const CLIENT_SOURCE_LABELS: Record<string, string> = {
+    meta: 'Meta / Tráfego pago', google: 'Google', instagram: 'Instagram',
+    indicacao: 'Indicação', loja: 'Passou na loja', cliente_antigo: 'Cliente antigo',
+    whatsapp: 'WhatsApp', outro: 'Outro',
+  };
+  const PRODUCT_LABELS: Record<string, string> = {
+    oculos_completo: 'Óculos completos', lentes: 'Lentes', armacao: 'Armação',
+    oculos_sol: 'Óculos de sol', manutencao: 'Manutenção',
+  };
+  const fmtPhone = (value?: string | null) => {
+    const digits = (value || '').replace(/\D/g, '');
+    if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return value || '';
+  };
 
   // --- Real Chart Data Calculation ---
   // X coordinates for 7 points
@@ -241,15 +265,16 @@ export default function DashboardPage() {
     setIsNewLeadModalOpen(false);
   };
 
-  // Filter leads for search
-  const filteredLeads = leads.filter(lead =>
-    lead.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (lead.empresa && lead.empresa.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (lead.segmento && lead.segmento.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  // Get most recent leads (matches the name structure of the mockup)
-  const recentLeads = filteredLeads.slice(0, 5);
+  // Clientes recentes (cadastro de Clientes), com filtro da busca do topo
+  const searchDigits = searchQuery.replace(/\D/g, '');
+  const recentClients = [...clients]
+    .filter((client) => {
+      if (!searchQuery.trim()) return true;
+      if (client.name.toLowerCase().includes(searchQuery.toLowerCase())) return true;
+      return searchDigits.length >= 3 && ((client.whatsapp || '').includes(searchDigits) || (client.secondary_phone || '').includes(searchDigits));
+    })
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .slice(0, 5);
 
   if (!isMounted) {
     return (
@@ -532,77 +557,31 @@ export default function DashboardPage() {
 
         <hr style={{ border: 'none', height: '1px', background: 'var(--glass-border)', margin: '0 0 24px 0' }} />
 
-        {/* 4 columns detail metrics inside card (mapped to CRM Nossa Ótica) */}
+        {/* Clientes por origem (ramo ótica) — atualiza a cada cliente cadastrado */}
         <div className="mobile-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-
-          <div style={{ borderRight: '1px solid var(--glass-border)', paddingRight: '20px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Quiz Instagram
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(quizInstagramSales)}
+          {[
+            { label: 'Indicações', count: clientsIndicacao },
+            { label: 'Mídia / Tráfego pago', count: clientsMidia },
+            { label: 'Passaram na loja', count: clientsLoja },
+            { label: 'Outras origens', count: clientsOutras },
+          ].map((item, index) => (
+            <div key={item.label} style={index < 3 ? { borderRight: '1px solid var(--glass-border)', paddingRight: '20px' } : undefined}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {item.label}
               </span>
-              <span style={{ fontSize: '11px', color: quizInstagramSales > 0 ? '#10b981' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
-                {quizInstagramSales > 0 && (
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M18 15l-6-6-6 6"/></svg>
-                )}
-                {quizShare.toFixed(1).replace('.', ',')}%
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {item.count} {item.count === 1 ? 'cliente' : 'clientes'}
+                </span>
+                <span style={{ fontSize: '11px', color: item.count > 0 ? '#10b981' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
+                  {item.count > 0 && (
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M18 15l-6-6-6 6"/></svg>
+                  )}
+                  {clientShare(item.count).toFixed(1).replace('.', ',')}%
+                </span>
+              </div>
             </div>
-          </div>
-
-          <div style={{ borderRight: '1px solid var(--glass-border)', paddingRight: '20px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Site Institucional
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(siteSales)}
-              </span>
-              <span style={{ fontSize: '11px', color: siteSales > 0 ? '#10b981' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
-                {siteSales > 0 && (
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M18 15l-6-6-6 6"/></svg>
-                )}
-                {siteShare.toFixed(1).replace('.', ',')}%
-              </span>
-            </div>
-          </div>
-
-          <div style={{ borderRight: '1px solid var(--glass-border)', paddingRight: '20px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Indicações
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(indicacaoSales)}
-              </span>
-              <span style={{ fontSize: '11px', color: indicacaoSales > 0 ? '#10b981' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
-                {indicacaoSales > 0 && (
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M18 15l-6-6-6 6"/></svg>
-                )}
-                {indicacaoShare.toFixed(1).replace('.', ',')}%
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Outras Origens
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(outrasSales)}
-              </span>
-              <span style={{ fontSize: '11px', color: outrasSales > 0 ? '#10b981' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
-                {outrasSales > 0 && (
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M18 15l-6-6-6 6"/></svg>
-                )}
-                {outrasShare.toFixed(1).replace('.', ',')}%
-              </span>
-            </div>
-          </div>
-
+          ))}
         </div>
 
       </div>
@@ -788,7 +767,7 @@ export default function DashboardPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h3 style={{ fontSize: '16.5px', fontWeight: 800, color: 'var(--text-primary)' }}>Clientes Recentes</h3>
-            <Link href="/leads" style={{ fontSize: '12.5px', color: '#ead7b1', fontWeight: 700 }}>
+            <Link href="/clientes" style={{ fontSize: '12.5px', color: '#ead7b1', fontWeight: 700 }}>
               Ver todos &gt;
             </Link>
           </div>
@@ -799,52 +778,39 @@ export default function DashboardPage() {
               <tr>
                 <th style={{ paddingLeft: 0 }}>Cliente</th>
                 <th>Origem</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right', paddingRight: 0 }}>Valor Est.</th>
+                <th>Produto</th>
+                <th style={{ textAlign: 'right', paddingRight: 0 }}>Cadastro</th>
               </tr>
             </thead>
             <tbody>
-              {recentLeads.map((lead) => {
-                const statusInfo = LEAD_STATUS_CONFIG[lead.status] || { label: lead.status, color: 'var(--text-primary)', bgColor: 'rgba(255,255,255,0.1)' };
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => setSelectedLead(lead)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td style={{ paddingLeft: 0 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{lead.nome}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{lead.empresa || 'Individual'}</div>
-                    </td>
-                    <td>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '12.5px' }}>
-                        {LEAD_ORIGEM_LABELS[lead.origem]}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{
-                        background: statusInfo.bgColor,
-                        color: statusInfo.color,
-                        padding: '4px 10px',
-                        borderRadius: '100px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        textTransform: 'uppercase'
-                      }}>
-                        {statusInfo.label}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', paddingRight: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
-                      R$ {lead.valor_estimado ? lead.valor_estimado.toLocaleString('pt-BR') : '0'}
-                    </td>
-                  </tr>
-                );
-              })}
+              {recentClients.map((client) => (
+                <tr key={client.id}>
+                  <td style={{ paddingLeft: 0 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{client.name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{fmtPhone(client.whatsapp || client.secondary_phone) || 'Sem telefone'}</div>
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                      {CLIENT_SOURCE_LABELS[client.source] || client.source}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                      {client.product_interests && client.product_interests.length > 0
+                        ? `${PRODUCT_LABELS[client.product_interests[0]] || client.product_interests[0]}${client.product_interests.length > 1 ? ` +${client.product_interests.length - 1}` : ''}`
+                        : '—'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right', paddingRight: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : '—'}
+                  </td>
+                </tr>
+              ))}
 
-              {recentLeads.length === 0 && (
+              {recentClients.length === 0 && (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>
-                    Nenhum cliente cadastrado.
+                    Nenhum cliente cadastrado ainda.
                   </td>
                 </tr>
               )}
