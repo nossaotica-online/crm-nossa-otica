@@ -9,7 +9,6 @@ export default function SettingsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
-  const [gcalUrl, setGcalUrl] = useState('');
   const { team } = useCRM();
 
   useEffect(() => {
@@ -27,19 +26,12 @@ export default function SettingsPage() {
     };
     fetchUser();
 
-    // Load gcal url
+    // URLs iCal "secretas" não podem ser protegidas em um site estático.
+    // Remove qualquer valor salvo por versões antigas.
     if (typeof window !== 'undefined') {
-      setGcalUrl(localStorage.getItem('nossaotica_gcal_url') || '');
+      localStorage.removeItem('nossaotica_gcal_url');
     }
   }, [team]);
-
-  const saveGcalUrl = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('nossaotica_gcal_url', gcalUrl);
-      alert('URL do Google Agenda salva com sucesso! Os eventos serão sincronizados no Calendário.');
-      window.location.reload();
-    }
-  };
 
   if (!isMounted) {
     return (
@@ -112,72 +104,23 @@ export default function SettingsPage() {
           <div className="glass-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '24px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>Integração com Google Agenda</h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0 0 16px 0' }}>
-              Cole abaixo o "Endereço secreto em formato iCal" do seu Google Agenda para espelhar os eventos diretamente no CRM.
+              A URL iCal secreta não é mais armazenada no navegador. Em um site estático, qualquer script executado na página poderia lê-la.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input
-                type="url"
-                placeholder="https://calendar.google.com/calendar/ical/..."
-                value={gcalUrl}
-                onChange={(e) => setGcalUrl(e.target.value)}
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13px', width: '100%' }}
-              />
-              <button
-                onClick={saveGcalUrl}
-                style={{ background: 'var(--accent-primary)', color: 'var(--text-primary)', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
-              >
-                Salvar Sincronização
-              </button>
-            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', margin: 0 }}>
+              Para reativar a sincronização, consuma o iCal em uma Supabase Edge Function ou backend autenticado e entregue ao navegador apenas os eventos necessários.
+            </p>
           </div>
 
         </div>
 
-        {/* Right Column: Webhook Integration for external Quiz & Site */}
         <div className="glass-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '24px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>Integração do Quiz e Site</h3>
-
+          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>Integrações externas</h3>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0 0 20px 0' }}>
-            Para enviar automaticamente as respostas do seu <strong>formulário de atendimento</strong> ou formulário do <strong>site da Nossa Ótica</strong> para o banco, você fará uma requisição POST para a sua <strong>Supabase Edge Function</strong>:
+            Nenhum webhook público está ativo. A antiga URL <code>webhook-leads</code> não existe e foi removida desta tela para não induzir integrações inseguras.
           </p>
-
-          <div style={{ background: 'var(--bg-tertiary)', padding: '14px', borderRadius: '12px', fontSize: '12.5px', fontFamily: 'monospace', color: 'var(--accent-primary)', marginBottom: '20px', border: '1px solid var(--glass-border)', fontWeight: 700 }}>
-            POST {process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/webhook-leads
-          </div>
-
-          <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px' }}>Exemplo de Código JS (Fetch):</h4>
-
-          <div style={{
-            background: 'var(--bg-tertiary)',
-            padding: '16px',
-            borderRadius: '12px',
-            fontSize: '11.5px',
-            fontFamily: 'monospace',
-            color: 'var(--text-secondary)',
-            overflowX: 'auto',
-            border: '1px solid var(--glass-border)',
-            maxHeight: '260px',
-            lineHeight: '1.5'
-          }}>
-            {`fetch('${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/webhook-leads', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    nome: 'Maria da Silva',
-    email: 'maria@email.com',
-    telefone: '(11) 99999-8888',
-    origem: 'site',
-    respostas_quiz: [
-      { pergunta: 'Usa óculos?', resposta: 'Sim, para perto' },
-      { pergunta: 'Última consulta?', resposta: 'Há mais de 2 anos' }
-    ]
-  })
-})
-.then(res => res.json())
-.then(data => console.log('Cliente salvo:', data));`}
-          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', margin: 0 }}>
+            Uma futura integração deve usar Edge Function autenticada, validação de schema, rate limit, CAPTCHA quando pública e idempotência.
+          </p>
         </div>
 
       </div>

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 import { WEEKDAY_SHORT, MONTH_LABELS } from '@/lib/constants';
 import { Booking, BookingStatus, BookingTipo, Task } from '@/types';
+import { safeMeetingUrl } from '@/lib/security';
+import { getTodayISO } from '@/lib/utils';
 
 const formatPhone = (value?: string | null) => {
   const digits = (value || '').replace(/\D/g, '');
@@ -20,7 +22,7 @@ export default function CalendarPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayISO());
   const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'calls' | 'tasks'>('calls');
@@ -29,10 +31,12 @@ export default function CalendarPage() {
   // New Booking Form State
   const [newClientId, setNewClientId] = useState('');
   const [newConsultorId, setNewConsultorId] = useState('');
-  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newDate, setNewDate] = useState(getTodayISO());
   const [newTime, setNewTime] = useState('10:00');
   const [newType, setNewType] = useState<BookingTipo>('diagnostico');
   const [newZoomLink, setNewZoomLink] = useState('');
+  const [newZoomError, setNewZoomError] = useState('');
+  const [newBookingError, setNewBookingError] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
   // New Task Form State
@@ -40,8 +44,9 @@ export default function CalendarPage() {
   const [newTaskResponsavelId, setNewTaskResponsavelId] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('WhatsApp');
   const [newTaskCustomTitle, setNewTaskCustomTitle] = useState('');
-  const [newTaskDate, setNewTaskDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newTaskDate, setNewTaskDate] = useState(getTodayISO());
   const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskError, setNewTaskError] = useState('');
 
   // Sync default dates when selectedDate changes
   useEffect(() => {
@@ -58,9 +63,15 @@ export default function CalendarPage() {
   const selectedDateTasks = tasks ? tasks.filter(t => t.data === selectedDate) : [];
   const activeClients = clients.filter(c => c.status === 'active');
 
-  const handleCreateBooking = (e: React.FormEvent) => {
+  const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNewBookingError('');
     if (!newClientId) return;
+    const meetingUrl = newZoomLink ? safeMeetingUrl(newZoomLink) : null;
+    if (newZoomLink && !meetingUrl) {
+      setNewZoomError('Use uma URL HTTPS válida do Zoom, Google Meet ou Microsoft Teams.');
+      return;
+    }
 
     // Calculate end time (duration 30 mins)
     const [hours, minutes] = newTime.split(':').map(Number);
@@ -70,7 +81,7 @@ export default function CalendarPage() {
     const formattedEndHours = String(endHours % 24).padStart(2, '0');
     const newEndTime = `${formattedEndHours}:${formattedEndMinutes}`;
 
-    addBooking({
+    const result = await addBooking({
       client_id: newClientId,
       consultor_id: newConsultorId || (team.length > 0 ? team[0].id : ''),
       data: newDate,
@@ -78,26 +89,33 @@ export default function CalendarPage() {
       horario_fim: newEndTime,
       status: 'confirmado',
       tipo: newType,
-      zoom_link: newZoomLink,
+      zoom_link: meetingUrl || '',
       notas: newNotes || 'Reunião agendada pelo painel administrativo.'
     });
+    if (!result.success) {
+      setNewBookingError(result.error || 'Não foi possível salvar o agendamento.');
+      return;
+    }
 
     // Reset and Close
     setNewClientId('');
     setNewConsultorId('');
-    setNewDate(new Date().toISOString().split('T')[0]);
+    setNewDate(getTodayISO());
     setNewTime('10:00');
     setNewType('diagnostico');
+    setNewZoomLink('');
+    setNewZoomError('');
     setNewNotes('');
     setIsNewBookingModalOpen(false);
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNewTaskError('');
     const finalTitle = newTaskTitle === 'Outro' ? newTaskCustomTitle : newTaskTitle;
     if (!finalTitle.trim()) return;
 
-    addTask({
+    const result = await addTask({
       client_id: newTaskClientId || null,
       responsavel_id: newTaskResponsavelId || (team.length > 0 ? team[0].id : null),
       data: newTaskDate,
@@ -105,6 +123,10 @@ export default function CalendarPage() {
       descricao: newTaskDescription || null,
       status: 'pendente'
     });
+    if (!result.success) {
+      setNewTaskError(result.error || 'Não foi possível salvar a tarefa.');
+      return;
+    }
 
     // Reset and Close
     setNewTaskClientId('');
@@ -264,7 +286,7 @@ export default function CalendarPage() {
               const hasTasks = dateTasks.length > 0;
 
               // Check if date is today
-              const isToday = new Date().toISOString().split('T')[0] === dateStr;
+              const isToday = getTodayISO() === dateStr;
 
               return (
                 <button
@@ -438,9 +460,9 @@ export default function CalendarPage() {
                         </span>
                       </div>
 
-                      {booking.zoom_link && (
+                      {safeMeetingUrl(booking.zoom_link) && (
                         <a
-                          href={booking.zoom_link}
+                          href={safeMeetingUrl(booking.zoom_link) || undefined}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -684,6 +706,7 @@ export default function CalendarPage() {
                 ✕
               </button>
             </div>
+            {newBookingError && <div role="alert" style={{ color: '#fca5a5', background: 'rgba(239,68,68,.08)', padding: 10, borderRadius: 8, fontSize: 12 }}>{newBookingError}</div>}
 
             {/* Lead selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -779,9 +802,13 @@ export default function CalendarPage() {
                 <input
                   type="url"
                   value={newZoomLink}
-                  onChange={(e) => setNewZoomLink(e.target.value)}
+                  onChange={(e) => {
+                    setNewZoomLink(e.target.value);
+                    setNewZoomError('');
+                  }}
                   style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 />
+                {newZoomError && <span role="alert" style={{ color: '#fca5a5', fontSize: '11px' }}>{newZoomError}</span>}
               </div>
             </div>
 
@@ -870,6 +897,7 @@ export default function CalendarPage() {
                 ✕
               </button>
             </div>
+            {newTaskError && <div role="alert" style={{ color: '#fca5a5', background: 'rgba(239,68,68,.08)', padding: 10, borderRadius: 8, fontSize: 12 }}>{newTaskError}</div>}
 
             {/* Lead selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1062,8 +1090,8 @@ export default function CalendarPage() {
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Data: <strong style={{ color: 'var(--text-primary)' }}>{selectedBooking.data.split('-').reverse().join('/')}</strong></div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Horário: <strong style={{ color: 'var(--text-primary)' }}>{selectedBooking.horario_inicio} - {selectedBooking.horario_fim}</strong></div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Consultor: <strong style={{ color: 'var(--text-primary)' }}>{consultor?.nome || 'Não definido'}</strong></div>
-                  {selectedBooking.zoom_link && (
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Zoom: <a href={selectedBooking.zoom_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Entrar na Reunião</a></div>
+                  {safeMeetingUrl(selectedBooking.zoom_link) && (
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Zoom: <a href={safeMeetingUrl(selectedBooking.zoom_link) || undefined} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Entrar na Reunião</a></div>
                   )}
                   {selectedBooking.notas && (
                     <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', borderTop: '1px solid var(--glass-border)', paddingTop: '8px' }}>

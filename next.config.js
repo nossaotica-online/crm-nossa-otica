@@ -15,6 +15,10 @@ const nextConfig = {
       },
     ],
   },
+  compiler: {
+    // Remove console.log/warn/error e demais chamadas console.* do bundle final.
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
 };
 
 module.exports = nextConfig;

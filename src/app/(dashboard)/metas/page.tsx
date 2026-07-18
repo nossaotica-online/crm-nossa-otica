@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 import { Goal, GoalTipo, GoalPeriodo } from '@/types';
+import { formatLocalDateISO } from '@/lib/utils';
 
 export default function GoalsPage() {
   const { goals, addGoal, updateGoalProgress, updateGoalTarget, deleteGoal } = useCRM();
@@ -27,8 +28,8 @@ export default function GoalsPage() {
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    setNewGoalStart(startOfMonth.toISOString().split('T')[0]);
-    setNewGoalEnd(endOfMonth.toISOString().split('T')[0]);
+    setNewGoalStart(formatLocalDateISO(startOfMonth));
+    setNewGoalEnd(formatLocalDateISO(endOfMonth));
   }, []);
 
   const handleCreateGoal = (e: React.FormEvent) => {

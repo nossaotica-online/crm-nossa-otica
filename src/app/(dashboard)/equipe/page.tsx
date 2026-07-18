@@ -5,7 +5,7 @@ import { useCRM } from '@/context/CRMContext';
 import { createClient } from '@/lib/supabase/client';
 
 export default function TeamPage() {
-  const { team, leads, bookings, sales, addTeamMember, toggleTeamMemberActive, deleteTeamMember } = useCRM();
+  const { team, leads, bookings, sales, addTeamMember, toggleTeamMemberActive } = useCRM();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -189,26 +189,6 @@ export default function TeamPage() {
                     }}
                   >
                     {member.ativo ? 'Desativar Acesso' : 'Ativar Acesso'}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (confirm(`Deseja realmente excluir ${member.nome}? clientes e compromissos dele serão desvinculados.`)) {
-                        await deleteTeamMember(member.id);
-                      }
-                    }}
-                    style={{
-                      padding: '10px 14px',
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      color: '#8e8e93',
-                      border: '1px solid rgba(255, 255, 255, 0.05)',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    Excluir
                   </button>
                 </div>
               )}

@@ -7,7 +7,10 @@ export interface CsvColumn<T> {
 export function toCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
   const sep = ';';
   const esc = (raw: string | number | null | undefined) => {
-    const s = raw === null || raw === undefined ? '' : String(raw);
+    let s = raw === null || raw === undefined ? '' : String(raw);
+    // Evita CSV/Formula Injection quando dados digitados por usuários são
+    // abertos no Excel/LibreOffice.
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     if (s.includes(sep) || s.includes('"') || s.includes('\n') || s.includes('\r')) {
       return '"' + s.replace(/"/g, '""') + '"';
     }

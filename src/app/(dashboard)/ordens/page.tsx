@@ -2,9 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { safeWhatsAppUrl } from '@/lib/security';
 import type { ClientRecord, ServiceOrder, ServiceOrderStatus } from '@/types/clients';
 import type { Profile } from '@/types';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
+import { getTodayISO } from '@/lib/utils';
 import styles from '../clientes/clientes.module.css';
 
 const PRODUCT_OPTIONS = [
@@ -262,7 +264,7 @@ export default function OrdensPage() {
       valor: total,
       parcelas: 1,
       status: saleStatus,
-      data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || new Date().toISOString().slice(0, 10)) : null,
+      data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || getTodayISO()) : null,
       notas: `Gerado automaticamente pela O.S. #${order.os_number}.`,
     }, { onConflict: 'service_order_id' });
 
@@ -282,7 +284,7 @@ export default function OrdensPage() {
     if (err) return setError(`Não foi possível mudar o status: ${err.message}`);
     const saleStatus = saleStatusFor(status);
     await supabase.from('sales')
-      .update({ status: saleStatus, data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || new Date().toISOString().slice(0, 10)) : null })
+      .update({ status: saleStatus, data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || getTodayISO()) : null })
       .eq('service_order_id', order.id);
     setNotice(`O.S. #${order.os_number} → ${statusInfo(status).label}.`);
     await loadData();
@@ -490,7 +492,7 @@ export default function OrdensPage() {
 
               <div className={styles.profileActions}>
                 <button onClick={() => { setViewId(null); openEdit(order); }}>Editar O.S.</button>
-                {order.phone ? <button onClick={() => window.open(`https://wa.me/55${onlyDigits(order.phone || '')}`, '_blank')}>Abrir WhatsApp</button> : null}
+                {safeWhatsAppUrl(order.phone) ? <button onClick={() => window.open(safeWhatsAppUrl(order.phone) || '', '_blank', 'noopener,noreferrer')}>Abrir WhatsApp</button> : null}
                 <button className={styles.dangerAction} onClick={() => { setViewId(null); void removeOrder(order); }}>Excluir</button>
               </div>
 

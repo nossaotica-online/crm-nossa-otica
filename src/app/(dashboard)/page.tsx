@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { LEAD_STATUS_CONFIG, LEAD_ORIGEM_LABELS } from '@/lib/constants';
 import { Lead, LeadStatus, LeadOrigem } from '@/types';
 import Link from 'next/link';
+import { formatLocalDateISO, getTodayISO } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { leads, clients, bookings, sales, goals, addLead, team } = useCRM();
@@ -127,7 +128,7 @@ export default function DashboardPage() {
   const weeklyPoints = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = formatLocalDateISO(d);
     const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
     // Sum sales for this day
@@ -144,7 +145,7 @@ export default function DashboardPage() {
   });
 
   // Today data (grouped by hours)
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayISO();
   const todaySales = sales.filter(s => s.status === 'fechado' && s.created_at && s.created_at.startsWith(todayStr));
 
   const hourlyIntervals = [9, 11, 13, 15, 17, 19, 21];
@@ -194,7 +195,7 @@ export default function DashboardPage() {
       return ref >= startStr && ref < endStr ? acc + s.valor : acc;
     }, 0);
 
-  const dayStr = (d: Date) => d.toISOString().split('T')[0];
+  const dayStr = (d: Date) => formatLocalDateISO(d);
   const refToday = new Date();
   const oneDayMs = 24 * 60 * 60 * 1000;
   let currentPeriodRev = 0;

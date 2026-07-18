@@ -14,6 +14,7 @@ import type {
   RelationshipType,
 } from '@/types/clients';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
+import { getTodayISO } from '@/lib/utils';
 import styles from './clientes.module.css';
 
 const PAGE_SIZE = 10;
@@ -55,7 +56,7 @@ const EMPTY_FORM: ClientFormValues = {
 };
 
 const emptyPrescriptionForm = (): PrescriptionFormValues => ({
-  prescription_date: new Date().toISOString().slice(0, 10), doctor_name: '', doctor_crm: '',
+  prescription_date: getTodayISO(), doctor_name: '', doctor_crm: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
   dnp_right: '', dnp_left: '', notes: '',

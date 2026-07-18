@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Lead, Booking, Sale, Goal, Profile, LeadStatus, LeadOrigem, Task } from '@/types';
 import { ClientRecord } from '@/types/clients';
 import { createClient } from '@/lib/supabase/client';
+import { getTodayISO } from '@/lib/utils';
+import { sanitizeOptionalText, sanitizePlainText } from '@/lib/security';
 
 interface CRMContextType {
   leads: Lead[];
@@ -14,7 +16,7 @@ interface CRMContextType {
   team: Profile[];
   addLead: (lead: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => void;
   updateLeadStatus: (leadId: string, status: LeadStatus, vendedor_id?: string) => void;
-  addBooking: (booking: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) => void;
+  addBooking: (booking: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) => Promise<{ success: boolean; error?: string }>;
   updateBookingStatus: (bookingId: string, status: Booking['status']) => void;
   deleteBooking: (bookingId: string) => Promise<boolean>;
   addTeamMember: (memberData: { email: string; pass: string; nome: string; cargo: string; role: string }) => Promise<{ success: boolean; error?: string }>;
@@ -24,11 +26,10 @@ interface CRMContextType {
   updateGoalTarget: (goalId: string, targetValue: number) => void;
   deleteGoal: (goalId: string) => void;
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => Promise<{ success: boolean; error?: string }>;
   updateTaskStatus: (taskId: string, status: Task['status']) => void;
   deleteTask: (taskId: string) => Promise<boolean>;
   toggleTeamMemberActive: (memberId: string, currentStatus: boolean) => Promise<boolean>;
-  deleteTeamMember: (memberId: string) => Promise<boolean>;
   loading: boolean;
 }
 
@@ -72,17 +73,41 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!silent) setLoading(false);
   };
 
+  const reloadChangedTable = async (
+    table: 'leads' | 'bookings' | 'sales' | 'goals' | 'tasks' | 'clients',
+  ) => {
+    if (table === 'leads') {
+      const { data } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      if (data) setLeads(data as Lead[]);
+    } else if (table === 'bookings') {
+      const { data } = await supabase.from('bookings').select('*').order('data', { ascending: true });
+      if (data) setBookings(data as Booking[]);
+    } else if (table === 'sales') {
+      const { data } = await supabase.from('sales').select('*').order('created_at', { ascending: false });
+      if (data) setSales(data as Sale[]);
+    } else if (table === 'goals') {
+      const { data } = await supabase.from('goals').select('*');
+      if (data) setGoals(data as Goal[]);
+    } else if (table === 'tasks') {
+      const { data } = await supabase.from('tasks').select('*').order('data', { ascending: true });
+      if (data) setTasks(data as Task[]);
+    } else {
+      const { data } = await supabase.from('clients').select('*').order('name', { ascending: true });
+      if (data) setClients(data as ClientRecord[]);
+    }
+  };
+
   useEffect(() => {
     loadData();
 
     // Set up realtime subscriptions
     const channel = supabase.channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => loadData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => loadData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => loadData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => loadData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => loadData(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => void reloadChangedTable('leads'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => void reloadChangedTable('bookings'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => void reloadChangedTable('sales'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => void reloadChangedTable('goals'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => void reloadChangedTable('tasks'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => void reloadChangedTable('clients'))
       .subscribe();
 
     return () => {
@@ -91,7 +116,17 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const addLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => {
-    const { data, error } = await supabase.from('leads').insert([leadData]).select();
+    const safeLeadData = {
+      ...leadData,
+      nome: sanitizePlainText(leadData.nome, 160).trim(),
+      email: sanitizeOptionalText(leadData.email, 254),
+      telefone: sanitizeOptionalText(leadData.telefone, 30),
+      empresa: sanitizeOptionalText(leadData.empresa, 160),
+      segmento: sanitizeOptionalText(leadData.segmento, 120),
+      notas: sanitizeOptionalText(leadData.notas, 5000),
+      motivo_perda: sanitizeOptionalText(leadData.motivo_perda, 1000),
+    };
+    const { data, error } = await supabase.from('leads').insert([safeLeadData]).select();
     if (data && data.length > 0) {
       setLeads(prev => [data[0] as Lead, ...prev]);
     } else if (error) {
@@ -114,13 +149,13 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const lead = prevLeads.find((l) => l.id === leadId);
               addSale({
                 lead_id: leadId,
-                vendedor_id: vendedor_id || lead?.responsavel_id || '00000000-0000-0000-0000-000000000002',
+                vendedor_id: vendedor_id || lead?.responsavel_id || null,
                 servico_id: null,
                 servico_nome: 'Óculos completos',
                 valor: lead?.valor_estimado || 0,
                 parcelas: 1,
                 status: 'fechado',
-                data_fechamento: new Date().toISOString().split('T')[0],
+                data_fechamento: getTodayISO(),
                 notas: `Faturamento automático após lead ser marcado como ganho/fechado no pipeline.`
               });
               return prevLeads;
@@ -135,15 +170,23 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBooking = async (bookingData: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) => {
-    const { data, error } = await supabase.from('bookings').insert([bookingData]).select();
+    const safeBookingData = {
+      ...bookingData,
+      zoom_link: sanitizeOptionalText(bookingData.zoom_link, 2048),
+      notas: sanitizeOptionalText(bookingData.notas, 5000),
+    };
+    const { data, error } = await supabase.from('bookings').insert([safeBookingData]).select();
     if (data && data.length > 0) {
       setBookings(prev => [...prev, data[0] as Booking]);
       if (bookingData.lead_id) {
         updateLeadStatus(bookingData.lead_id, 'agendado');
       }
+      return { success: true };
     } else if (error) {
       console.error('Erro ao adicionar booking:', error);
+      return { success: false, error: 'Não foi possível salvar o agendamento.' };
     }
+    return { success: false, error: 'O agendamento não foi confirmado pelo banco.' };
   };
 
   const updateBookingStatus = async (bookingId: string, status: Booking['status']) => {
@@ -160,7 +203,14 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addSale = async (saleData: Omit<Sale, 'id' | 'created_at' | 'updated_at'>) => {
-    const { data, error } = await supabase.from('sales').insert([saleData]).select();
+    const { data: authData } = await supabase.auth.getUser();
+    const safeSaleData = {
+      ...saleData,
+      vendedor_id: saleData.vendedor_id || authData.user?.id || null,
+      servico_nome: sanitizeOptionalText(saleData.servico_nome, 200),
+      notas: sanitizeOptionalText(saleData.notas, 5000),
+    };
+    const { data, error } = await supabase.from('sales').insert([safeSaleData]).select();
     if (data && data.length > 0) {
       const newSale = data[0] as Sale;
       setSales(prev => [newSale, ...prev]);
@@ -232,7 +282,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (error) {
-        return { success: false, error: error.message };
+        return {
+          success: false,
+          error: error.code === '42501'
+            ? 'Somente administradores ativos podem criar membros.'
+            : 'Não foi possível criar o membro da equipe.',
+        };
       }
 
       if (data && data.success === false) {
@@ -244,9 +299,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (teamRes) setTeam(teamRes as Profile[]);
 
       return { success: true };
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao adicionar membro da equipe:', err);
-      return { success: false, error: err.message || 'Erro desconhecido' };
+      return { success: false, error: 'Não foi possível criar o membro da equipe.' };
     }
   };
 
@@ -260,12 +315,20 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
-    const { data, error } = await supabase.from('tasks').insert([taskData]).select();
+    const safeTaskData = {
+      ...taskData,
+      titulo: sanitizePlainText(taskData.titulo, 200).trim(),
+      descricao: sanitizeOptionalText(taskData.descricao, 5000),
+    };
+    const { data, error } = await supabase.from('tasks').insert([safeTaskData]).select();
     if (data && data.length > 0) {
       setTasks(prev => [...prev, data[0] as Task]);
+      return { success: true };
     } else if (error) {
       console.error('Erro ao adicionar tarefa:', error);
+      return { success: false, error: 'Não foi possível salvar a tarefa.' };
     }
+    return { success: false, error: 'A tarefa não foi confirmada pelo banco.' };
   };
 
   const updateTaskStatus = async (taskId: string, status: Task['status']) => {
@@ -299,17 +362,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const deleteTeamMember = async (memberId: string): Promise<boolean> => {
-    const { error } = await supabase.from('profiles').delete().eq('id', memberId);
-    if (!error) {
-      setTeam(prev => prev.filter(m => m.id !== memberId));
-      return true;
-    } else {
-      console.error('Erro ao deletar colaborador:', error);
-      return false;
-    }
-  };
-
   return (
     <CRMContext.Provider
       value={{
@@ -330,7 +382,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteTask,
         addTeamMember,
         toggleTeamMemberActive,
-        deleteTeamMember,
         addSale,
         updateGoalProgress,
         addGoal,

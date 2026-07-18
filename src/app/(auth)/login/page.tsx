@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -17,6 +18,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
@@ -25,12 +27,31 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      // Não revela se o e-mail existe nem detalhes internos do provedor.
+      setError('Não foi possível entrar. Verifique suas credenciais e tente novamente.');
       setLoading(false);
     } else {
+      localStorage.setItem('nossa-otica-session-started-at', String(Date.now()));
       router.push('/');
       router.refresh();
     }
+  };
+
+  const handlePasswordRecovery = async () => {
+    setError(null);
+    setNotice(null);
+    if (!email.trim()) {
+      setError('Digite seu e-mail para receber o link de recuperação.');
+      return;
+    }
+
+    setLoading(true);
+    const supabase = createClient();
+    const redirectTo = `${window.location.origin}${basePath}/redefinir-senha/`;
+    await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    setLoading(false);
+    // Resposta genérica evita revelar se um e-mail está cadastrado.
+    setNotice('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.');
   };
 
   return (
@@ -67,9 +88,18 @@ export default function LoginPage() {
           </div>
           
           {error && <div className={styles.error}>{error}</div>}
+          {notice && <div style={{ color: '#86efac', fontSize: 13, lineHeight: 1.5 }}>{notice}</div>}
           
           <button type="submit" className={styles.submitBtn} disabled={loading}>
             {loading ? <span className={styles.spinner}></span> : 'Entrar no Sistema'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handlePasswordRecovery()}
+            disabled={loading}
+            style={{ border: 0, background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13 }}
+          >
+            Esqueci minha senha
           </button>
         </form>
         

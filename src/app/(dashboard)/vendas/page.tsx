@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
+import { getTodayISO } from '@/lib/utils';
 
 const PRODUCT_OPTIONS = ['Óculos completos', 'Lentes', 'Armações', 'Óculos de sol', 'Manutenção'];
 
@@ -45,7 +46,7 @@ export default function SalesPage() {
       valor: Number(value),
       parcelas: Number(installments),
       status: status,
-      data_fechamento: status === 'fechado' ? new Date().toISOString().split('T')[0] : null,
+      data_fechamento: status === 'fechado' ? getTodayISO() : null,
       notas: notes
     } as any);
 

@@ -5,6 +5,18 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import React, { useState, useEffect } from 'react';
 import { NAV_ITEMS } from '@/lib/constants';
+import type { UserRole } from '@/types';
+
+const routeRoles: Record<string, UserRole[]> = {
+  '/equipe': ['admin'],
+  '/configuracoes': ['admin'],
+  '/metas': ['admin', 'gestor'],
+};
+
+const canAccessRoute = (pathname: string, role: UserRole | null) => {
+  const rule = Object.entries(routeRoles).find(([route]) => pathname.startsWith(route));
+  return !rule || Boolean(role && rule[1].includes(role));
+};
 
 // SVG Icons matching the mockup
 const getIcon = (iconName: string, active: boolean) => {
@@ -92,6 +104,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [channelsExpanded, setChannelsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,7 +121,7 @@ export default function DashboardLayout({
         // Verificar se o perfil está ativo no banco
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('ativo')
+          .select('ativo, role')
           .eq('id', session.user.id)
           .single();
 
@@ -117,6 +130,7 @@ export default function DashboardLayout({
           await supabase.auth.signOut();
           router.push('/login');
         } else {
+          setCurrentRole(profile.role as UserRole);
           setIsAuthorized(true);
         }
       }
@@ -124,6 +138,49 @@ export default function DashboardLayout({
 
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    if (!isAuthorized) return;
+    const supabase = createClient();
+    const idleTimeout = 30 * 60 * 1000;
+    const maxSessionDuration = 12 * 60 * 60 * 1000;
+    const now = Date.now();
+    let lastActivity = Number(localStorage.getItem('nossa-otica-last-activity')) || now;
+    const startedAt = Number(localStorage.getItem('nossa-otica-session-started-at')) || now;
+    localStorage.setItem('nossa-otica-last-activity', String(lastActivity));
+    localStorage.setItem('nossa-otica-session-started-at', String(startedAt));
+
+    const expireSession = async () => {
+      await supabase.auth.signOut();
+      localStorage.removeItem('nossa-otica-last-activity');
+      localStorage.removeItem('nossa-otica-session-started-at');
+      router.replace('/login');
+    };
+    const markActivity = () => {
+      const activityTime = Date.now();
+      if (activityTime - lastActivity < 30_000) return;
+      lastActivity = activityTime;
+      localStorage.setItem('nossa-otica-last-activity', String(activityTime));
+    };
+    const checkExpiration = () => {
+      const checkTime = Date.now();
+      if (
+        checkTime - lastActivity >= idleTimeout
+        || checkTime - startedAt >= maxSessionDuration
+      ) {
+        void expireSession();
+      }
+    };
+
+    const activityEvents: Array<keyof WindowEventMap> = ['pointerdown', 'keydown', 'touchstart'];
+    activityEvents.forEach((event) => window.addEventListener(event, markActivity, { passive: true }));
+    const interval = window.setInterval(checkExpiration, 60_000);
+    checkExpiration();
+    return () => {
+      activityEvents.forEach((event) => window.removeEventListener(event, markActivity));
+      window.clearInterval(interval);
+    };
+  }, [isAuthorized, router]);
 
   useEffect(() => {
     if (darkMode) {
@@ -149,6 +206,9 @@ export default function DashboardLayout({
   if (!isAuthorized) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Verificando acesso...</div>;
   }
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => canAccessRoute(item.href, currentRole));
+  const currentRouteAllowed = canAccessRoute(pathname, currentRole);
 
   return (
     <div className="dashboard-layout">
@@ -264,7 +324,7 @@ export default function DashboardLayout({
 
           {/* Navigation Links */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
               return (
                 <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} style={{
@@ -296,8 +356,7 @@ export default function DashboardLayout({
         {/* Footer Area: Dual Light/Dark Button Control (Exactly like mockup) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-          {/* Support and Help Link */}
-          <Link href="/configuracoes" style={{
+          {currentRole === 'admin' && <Link href="/configuracoes" style={{
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
@@ -312,7 +371,21 @@ export default function DashboardLayout({
               <path d="M12 17h.01" />
             </svg>
             <span>Suporte & Ajuda</span>
-          </Link>
+          </Link>}
+
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = createClient();
+              await supabase.auth.signOut();
+              localStorage.removeItem('nossa-otica-last-activity');
+              localStorage.removeItem('nossa-otica-session-started-at');
+              router.replace('/login');
+            }}
+            style={{ background: 'transparent', border: 0, color: '#fca5a5', padding: '8px 14px', textAlign: 'left', cursor: 'pointer', fontSize: '12.5px' }}
+          >
+            Sair com segurança
+          </button>
 
           {/* Dual Toggle Control side-by-side capsule buttons */}
           <div style={{
@@ -376,7 +449,12 @@ export default function DashboardLayout({
 
       {/* Main Content Pane */}
       <main className="main-content" style={{ marginLeft: 'var(--sidebar-width)', flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
-        {children}
+        {currentRouteAllowed ? children : (
+          <div style={{ padding: 40, color: 'var(--text-primary)' }}>
+            <h1>Acesso não autorizado</h1>
+            <p style={{ color: 'var(--text-secondary)' }}>Sua função não permite acessar esta área.</p>
+          </div>
+        )}
       </main>
 
       {/* Bottom navigation — aparência de app no celular */}
