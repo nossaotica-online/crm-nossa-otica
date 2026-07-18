@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ClientRecord, ServiceOrder, ServiceOrderStatus } from '@/types/clients';
+import type { Profile } from '@/types';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import styles from '../clientes/clientes.module.css';
 
@@ -50,7 +51,7 @@ interface OrderForm {
   od_sphere: string; od_cylinder: string; od_axis: string; od_addition: string;
   oe_sphere: string; oe_cylinder: string; oe_axis: string; oe_addition: string;
   dnp: string;
-  total: string; down_payment: string; payment_method: string;
+  total: string; down_payment: string; payment_method: string; vendedor_id: string;
   status: ServiceOrderStatus; delivery_date: string; notes: string;
 }
 
@@ -61,13 +62,14 @@ const EMPTY_FORM: OrderForm = {
   product_type: '', frame_description: '', lens_description: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
-  dnp: '', total: '', down_payment: '', payment_method: '', status: 'aberta', delivery_date: '', notes: '',
+  dnp: '', total: '', down_payment: '', payment_method: '', vendedor_id: '', status: 'aberta', delivery_date: '', notes: '',
 };
 
 export default function OrdensPage() {
   const supabase = useMemo(() => createClient(), []);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [team, setTeam] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -81,9 +83,10 @@ export default function OrdensPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const [ordersRes, clientsRes] = await Promise.all([
+    const [ordersRes, clientsRes, teamRes] = await Promise.all([
       supabase.from('service_orders').select('*').order('created_at', { ascending: false }),
       supabase.from('clients').select('*').eq('status', 'active').order('name'),
+      supabase.from('profiles').select('*'),
     ]);
     const err = ordersRes.error || clientsRes.error;
     if (err) {
@@ -93,6 +96,7 @@ export default function OrdensPage() {
     } else {
       setOrders((ordersRes.data || []) as ServiceOrder[]);
       setClients((clientsRes.data || []) as ClientRecord[]);
+      setTeam((teamRes.data || []) as Profile[]);
     }
     setLoading(false);
   };
@@ -148,6 +152,7 @@ export default function OrdensPage() {
       { label: 'Entrada', value: (o) => brl(o.down_payment) },
       { label: 'Saldo', value: (o) => brl((o.total || 0) - (o.down_payment || 0)) },
       { label: 'Forma de pagamento', value: (o) => o.payment_method },
+      { label: 'Vendedor(a)', value: (o) => team.find((member) => member.id === o.vendedor_id)?.nome },
       { label: 'Status', value: (o) => statusInfo(o.status).label },
       { label: 'Entrega', value: (o) => formatDate(o.delivery_date) },
       { label: 'Observações', value: (o) => o.notes },
@@ -169,7 +174,7 @@ export default function OrdensPage() {
       od_sphere: s(order.od_sphere), od_cylinder: s(order.od_cylinder), od_axis: s(order.od_axis), od_addition: s(order.od_addition),
       oe_sphere: s(order.oe_sphere), oe_cylinder: s(order.oe_cylinder), oe_axis: s(order.oe_axis), oe_addition: s(order.oe_addition),
       dnp: order.dnp || '', total: s(order.total), down_payment: s(order.down_payment),
-      payment_method: order.payment_method || '',
+      payment_method: order.payment_method || '', vendedor_id: order.vendedor_id || '',
       status: order.status, delivery_date: order.delivery_date || '', notes: order.notes || '',
     });
     setClientTerm('');
@@ -211,6 +216,7 @@ export default function OrdensPage() {
       }
     }
 
+    const total = numberOrNull(form.total) || 0;
     const payload = {
       client_id: clientId,
       client_name: name,
@@ -221,32 +227,56 @@ export default function OrdensPage() {
       od_sphere: numberOrNull(form.od_sphere), od_cylinder: numberOrNull(form.od_cylinder), od_axis: intOrNull(form.od_axis), od_addition: numberOrNull(form.od_addition),
       oe_sphere: numberOrNull(form.oe_sphere), oe_cylinder: numberOrNull(form.oe_cylinder), oe_axis: intOrNull(form.oe_axis), oe_addition: numberOrNull(form.oe_addition),
       dnp: form.dnp.trim() || null,
-      total: numberOrNull(form.total) || 0, down_payment: numberOrNull(form.down_payment) || 0,
+      total, down_payment: numberOrNull(form.down_payment) || 0,
       payment_method: form.payment_method || null,
+      vendedor_id: form.vendedor_id || null,
       status: form.status, delivery_date: form.delivery_date || null, notes: form.notes.trim() || null,
     };
     const result = editingId
-      ? await supabase.from('service_orders').update(payload).eq('id', editingId)
-      : await supabase.from('service_orders').insert(payload);
-    setSaving(false);
-    if (result.error) {
-      const msg = /row-level security|permission|jwt|401/i.test(result.error.message)
+      ? await supabase.from('service_orders').update(payload).eq('id', editingId).select().single()
+      : await supabase.from('service_orders').insert(payload).select().single();
+    if (result.error || !result.data) {
+      setSaving(false);
+      const msg = /row-level security|permission|jwt|401/i.test(result.error?.message || '')
         ? 'você precisa estar logada para gravar. Faça login com sua conta.'
-        : result.error.message;
+        : (result.error?.message || 'erro desconhecido');
       return setError(`Não foi possível salvar a O.S.: ${msg}`);
     }
+    const order = result.data as ServiceOrder;
+
+    // A O.S. já é a venda: mantém um registro em Vendas sincronizado com ela.
+    const saleClosed = order.status !== 'cancelada';
+    const { error: saleError } = await supabase.from('sales').upsert({
+      service_order_id: order.id,
+      client_id: clientId,
+      vendedor_id: form.vendedor_id || null,
+      servico_id: null,
+      servico_nome: form.product_type || 'Óculos completos',
+      valor: total,
+      parcelas: 1,
+      status: saleClosed ? 'fechado' : 'cancelado',
+      data_fechamento: saleClosed ? new Date().toISOString().slice(0, 10) : null,
+      notas: `Gerado automaticamente pela O.S. #${order.os_number}.`,
+    }, { onConflict: 'service_order_id' });
+
+    setSaving(false);
     setFormOpen(false);
-    setNotice(editingId
-      ? 'Ordem atualizada.'
-      : createdClient
-        ? 'Ordem criada e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.'
-        : 'Ordem de serviço criada.');
+    setNotice([
+      editingId ? 'Ordem atualizada.' : `O.S. #${order.os_number} criada`,
+      !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
+      saleClosed ? 'Já lançada em Vendas.' : null,
+      saleError ? `(aviso: não foi possível sincronizar com Vendas — ${saleError.message})` : null,
+    ].filter(Boolean).join(' '));
     await loadData();
   };
 
   const changeStatus = async (order: ServiceOrder, status: ServiceOrderStatus) => {
     const { error: err } = await supabase.from('service_orders').update({ status }).eq('id', order.id);
     if (err) return setError(`Não foi possível mudar o status: ${err.message}`);
+    const closed = status !== 'cancelada';
+    await supabase.from('sales')
+      .update({ status: closed ? 'fechado' : 'cancelado', data_fechamento: closed ? new Date().toISOString().slice(0, 10) : null })
+      .eq('service_order_id', order.id);
     setNotice(`O.S. #${order.os_number} → ${statusInfo(status).label}.`);
     await loadData();
   };
@@ -418,10 +448,12 @@ export default function OrdensPage() {
                 <label>Entrada / sinal (R$)<input inputMode="decimal" value={form.down_payment} onChange={(event) => setForm({ ...form, down_payment: event.target.value })} placeholder="0,00" /></label>
                 <label>Saldo a pagar<input value={brl(balance(form.total, form.down_payment))} disabled /></label>
                 <label>Forma de pagamento<select value={form.payment_method} onChange={(event) => setForm({ ...form, payment_method: event.target.value })}><option value="">Selecione...</option>{PAYMENT_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                <label>Vendedor(a)<select value={form.vendedor_id} onChange={(event) => setForm({ ...form, vendedor_id: event.target.value })}><option value="">Selecione...</option>{team.map((member) => <option key={member.id} value={member.id}>{member.nome}</option>)}</select></label>
                 <label>Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ServiceOrderStatus })}>{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                 <label>Data de entrega<input type="date" value={form.delivery_date} onChange={(event) => setForm({ ...form, delivery_date: event.target.value })} /></label>
                 <label className={styles.fullField}>Observações<textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Detalhes do pedido, laboratório, prazo..." /></label>
               </div>
+              <p className={styles.helper} style={{ marginTop: 10 }}>Ao salvar, esta O.S. entra automaticamente em <strong>Vendas</strong> com este valor. Se o status for “Cancelada”, a venda também fica cancelada.</p>
             </section>
 
             <div className={styles.modalFooter}><button type="button" className="btn btn-secondary" onClick={() => setFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : (editingId ? 'Atualizar O.S.' : 'Criar O.S.')}</button></div>

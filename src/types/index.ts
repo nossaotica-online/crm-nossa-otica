@@ -118,6 +118,7 @@ export interface Sale {
   id: string;
   lead_id: string | null;
   client_id?: string | null;
+  service_order_id?: string | null;
   vendedor_id: string | null;
   servico_id: string | null;
   servico_nome: string | null;

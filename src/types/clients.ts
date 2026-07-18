@@ -107,6 +107,7 @@ export interface ServiceOrder {
   total: number;
   down_payment: number;
   payment_method: string | null;
+  vendedor_id: string | null;
   status: ServiceOrderStatus;
   delivery_date: string | null;
   notes: string | null;
