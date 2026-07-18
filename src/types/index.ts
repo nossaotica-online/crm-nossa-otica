@@ -117,6 +117,7 @@ export type SaleStatus = 'proposta' | 'negociacao' | 'fechado' | 'cancelado';
 export interface Sale {
   id: string;
   lead_id: string | null;
+  client_id?: string | null;
   vendedor_id: string | null;
   servico_id: string | null;
   servico_nome: string | null;

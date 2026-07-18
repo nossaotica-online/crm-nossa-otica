@@ -115,9 +115,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               addSale({
                 lead_id: leadId,
                 vendedor_id: vendedor_id || lead?.responsavel_id || '00000000-0000-0000-0000-000000000002',
-                servico_id: 'serv-generic',
-                servico_nome: lead?.segmento === 'E-commerce / Varejo' ? 'Assessoria de Tráfego Pago' : 'Estruturação Comercial (CRM/Processos)',
-                valor: lead?.valor_estimado || 4000,
+                servico_id: null,
+                servico_nome: 'Óculos completos',
+                valor: lead?.valor_estimado || 0,
                 parcelas: 1,
                 status: 'fechado',
                 data_fechamento: new Date().toISOString().split('T')[0],

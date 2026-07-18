@@ -3,21 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 
-const opticalProductLabel = (serviceName: string | null) => {
-  if (!serviceName) return 'Óculos completos';
+const PRODUCT_OPTIONS = ['Óculos completos', 'Lentes', 'Armações', 'Óculos de sol', 'Manutenção'];
 
-  const legacyMarketingServices = [
-    'Assessoria de Tráfego Pago',
-    'Estruturação Comercial (CRM/Processos)',
-    'Funil de Vendas de Alta Conversão',
-    'Consultoria Comercial Estratégica',
-  ];
-
-  return legacyMarketingServices.includes(serviceName) ? 'Óculos completos' : serviceName;
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+const formatPhone = (value?: string | null) => {
+  const digits = onlyDigits(value || '');
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return value || '';
 };
 
 export default function SalesPage() {
-  const { sales, leads, team, addSale } = useCRM();
+  const { sales, clients, team, addSale } = useCRM();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -27,8 +24,8 @@ export default function SalesPage() {
   const [isNewSaleModalOpen, setIsNewSaleModalOpen] = useState(false);
 
   // Form State
-  const [leadId, setLeadId] = useState('');
-  const [vendedorId, setVendedorId] = useState('prof-2'); // Default to Vitória
+  const [clientId, setClientId] = useState('');
+  const [vendedorId, setVendedorId] = useState('');
   const [serviceName, setServiceName] = useState('Óculos completos');
   const [value, setValue] = useState(0);
   const [installments, setInstallments] = useState(1);
@@ -37,22 +34,23 @@ export default function SalesPage() {
 
   const handleCreateSale = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!leadId) return;
+    if (!clientId) return;
 
     addSale({
-      lead_id: leadId,
-      vendedor_id: vendedorId,
-      servico_id: 'serv-generic',
+      client_id: clientId,
+      lead_id: null,
+      vendedor_id: vendedorId || (team.length > 0 ? team[0].id : null),
+      servico_id: null,
       servico_nome: serviceName,
       valor: Number(value),
       parcelas: Number(installments),
       status: status,
       data_fechamento: status === 'fechado' ? new Date().toISOString().split('T')[0] : null,
-      notes: notes
+      notas: notes
     } as any);
 
     // Reset Form
-    setLeadId('');
+    setClientId('');
     setServiceName('Óculos completos');
     setValue(0);
     setInstallments(1);
@@ -71,8 +69,6 @@ export default function SalesPage() {
       </div>
     );
   }
-
-
 
   // Calculations
   const closedSales = sales.filter(s => s.status === 'fechado');
@@ -109,7 +105,7 @@ export default function SalesPage() {
             R$ {totalRevenue.toLocaleString('pt-BR')}
           </h2>
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', display: 'block', marginTop: '8px' }}>
-            Contratos assinados e fechados
+            Vendas fechadas
           </span>
         </div>
 
@@ -119,17 +115,17 @@ export default function SalesPage() {
             R$ {averageTicket.toLocaleString('pt-BR')}
           </h2>
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', display: 'block', marginTop: '8px' }}>
-            Valor médio por cliente fechado
+            Valor médio por venda
           </span>
         </div>
 
         <div className="glass-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: '20px' }}>
-          <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Pipeline em Negociação</span>
+          <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Orçamentos em Negociação</span>
           <h2 style={{ fontSize: '32px', fontWeight: 800, margin: '8px 0 0 0', color: 'var(--accent-primary)' }}>
             R$ {potentialRevenue.toLocaleString('pt-BR')}
           </h2>
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', display: 'block', marginTop: '8px' }}>
-            Propostas abertas com chance de fechamento
+            Orçamentos abertos com chance de fechar
           </span>
         </div>
 
@@ -137,34 +133,34 @@ export default function SalesPage() {
 
       {/* Sales List Table */}
       <div className="glass-card" style={{ borderRadius: '24px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Contratos & Transações</h3>
+        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Vendas realizadas</h3>
 
         <div className="table-scroll">
         <table className="table" style={{ fontSize: '13.5px' }}>
           <thead>
             <tr>
-              <th style={{ paddingLeft: 0 }}>Cliente / Empresa</th>
-              <th>Produto vendido</th>
-              <th>Responsável</th>
+              <th style={{ paddingLeft: 0 }}>Cliente</th>
+              <th>Produto</th>
+              <th>Vendedor(a)</th>
               <th>Parcelas</th>
               <th>Status</th>
-              <th style={{ textAlign: 'right', paddingRight: 0 }}>Valor do Contrato</th>
+              <th style={{ textAlign: 'right', paddingRight: 0 }}>Valor da Venda</th>
             </tr>
           </thead>
           <tbody>
             {sales.map((sale) => {
-              const lead = leads.find(l => l.id === sale.lead_id);
+              const client = clients.find(c => c.id === sale.client_id);
               const seller = team.find(t => t.id === sale.vendedor_id);
 
               return (
                 <tr key={sale.id}>
                   <td style={{ paddingLeft: 0 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{lead?.nome || 'Cliente Manual'}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{client?.name || 'Cliente avulso'}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {lead?.empresa || 'Individual'}
+                      {formatPhone(client?.whatsapp || client?.secondary_phone) || '—'}
                     </div>
                   </td>
-                  <td style={{ color: 'var(--text-primary)' }}>{opticalProductLabel(sale.servico_nome)}</td>
+                  <td style={{ color: 'var(--text-primary)' }}>{sale.servico_nome || 'Óculos completos'}</td>
                   <td>{seller?.nome}</td>
                   <td>{sale.parcelas}x</td>
                   <td>
@@ -190,7 +186,7 @@ export default function SalesPage() {
             {sales.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '24px 0' }}>
-                  Nenhuma transação comercial registrada.
+                  Nenhuma venda registrada ainda.
                 </td>
               </tr>
             )}
@@ -228,7 +224,7 @@ export default function SalesPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Registrar Venda / Contrato</h3>
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Registrar Venda</h3>
               <button
                 type="button"
                 onClick={() => setIsNewSaleModalOpen(false)}
@@ -238,24 +234,29 @@ export default function SalesPage() {
               </button>
             </div>
 
-            {/* Lead selector */}
+            {/* Client selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Selecionar Cliente *
               </label>
               <select
                 required
-                value={leadId}
-                onChange={(e) => setLeadId(e.target.value)}
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
                 <option value="">-- Escolha o Cliente --</option>
-                {leads.map(lead => (
-                  <option key={lead.id} value={lead.id}>
-                    {lead.nome} {lead.empresa ? `(${lead.empresa})` : ''}
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} — {formatPhone(client.whatsapp || client.secondary_phone)}
                   </option>
                 ))}
               </select>
+              {clients.length === 0 && (
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                  Nenhum cliente cadastrado ainda. Cadastre primeiro na aba <strong>Clientes</strong> ou ao abrir uma <strong>Ordem de Serviço</strong>.
+                </p>
+              )}
             </div>
 
             {/* Service Name */}
@@ -268,24 +269,23 @@ export default function SalesPage() {
                 onChange={(e) => setServiceName(e.target.value)}
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
-                <option value="Óculos completos">Óculos completos</option>
-                <option value="Lentes">Lentes</option>
-                <option value="Armações">Armações</option>
-                <option value="Óculos de sol">Óculos de sol</option>
-                <option value="Manutenção">Manutenção</option>
+                {PRODUCT_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
               </select>
             </div>
 
             {/* Vendedor selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Vendedor / Responsável
+                Vendedor(a)
               </label>
               <select
                 value={vendedorId}
                 onChange={(e) => setVendedorId(e.target.value)}
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
+                <option value="">-- Selecione --</option>
                 {team.map(member => (
                   <option key={member.id} value={member.id}>
                     {member.nome} - {member.cargo}
@@ -298,7 +298,7 @@ export default function SalesPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Valor do Contrato (R$) *
+                  Valor da Venda (R$) *
                 </label>
                 <input
                   type="number"
@@ -326,7 +326,7 @@ export default function SalesPage() {
             {/* Status */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Status da Transação
+                Status da Venda
               </label>
               <select
                 value={status}
