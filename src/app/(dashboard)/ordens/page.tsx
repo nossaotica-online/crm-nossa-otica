@@ -21,6 +21,11 @@ const STATUS_OPTIONS: { value: ServiceOrderStatus; label: string; color: string;
 
 const statusInfo = (value: ServiceOrderStatus) => STATUS_OPTIONS.find((option) => option.value === value) || STATUS_OPTIONS[0];
 
+// A venda só conta como faturamento (fechado) quando a O.S. é ENTREGUE.
+// Antes disso é "negociação"; cancelada vira venda cancelada.
+const saleStatusFor = (osStatus: ServiceOrderStatus): 'fechado' | 'negociacao' | 'cancelado' =>
+  osStatus === 'entregue' ? 'fechado' : osStatus === 'cancelada' ? 'cancelado' : 'negociacao';
+
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
 const brl = (value: number | null | undefined) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 const formatDate = (value: string | null) => value
@@ -245,7 +250,7 @@ export default function OrdensPage() {
     const order = result.data as ServiceOrder;
 
     // A O.S. já é a venda: mantém um registro em Vendas sincronizado com ela.
-    const saleClosed = order.status !== 'cancelada';
+    const saleStatus = saleStatusFor(order.status);
     const { error: saleError } = await supabase.from('sales').upsert({
       service_order_id: order.id,
       client_id: clientId,
@@ -254,8 +259,8 @@ export default function OrdensPage() {
       servico_nome: form.product_type || 'Óculos completos',
       valor: total,
       parcelas: 1,
-      status: saleClosed ? 'fechado' : 'cancelado',
-      data_fechamento: saleClosed ? new Date().toISOString().slice(0, 10) : null,
+      status: saleStatus,
+      data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || new Date().toISOString().slice(0, 10)) : null,
       notas: `Gerado automaticamente pela O.S. #${order.os_number}.`,
     }, { onConflict: 'service_order_id' });
 
@@ -264,7 +269,7 @@ export default function OrdensPage() {
     setNotice([
       editingId ? 'Ordem atualizada.' : `O.S. #${order.os_number} criada`,
       !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
-      saleClosed ? 'Já lançada em Vendas.' : null,
+      saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
       saleError ? `(aviso: não foi possível sincronizar com Vendas — ${saleError.message})` : null,
     ].filter(Boolean).join(' '));
     await loadData();
@@ -273,9 +278,9 @@ export default function OrdensPage() {
   const changeStatus = async (order: ServiceOrder, status: ServiceOrderStatus) => {
     const { error: err } = await supabase.from('service_orders').update({ status }).eq('id', order.id);
     if (err) return setError(`Não foi possível mudar o status: ${err.message}`);
-    const closed = status !== 'cancelada';
+    const saleStatus = saleStatusFor(status);
     await supabase.from('sales')
-      .update({ status: closed ? 'fechado' : 'cancelado', data_fechamento: closed ? new Date().toISOString().slice(0, 10) : null })
+      .update({ status: saleStatus, data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || new Date().toISOString().slice(0, 10)) : null })
       .eq('service_order_id', order.id);
     setNotice(`O.S. #${order.os_number} → ${statusInfo(status).label}.`);
     await loadData();
@@ -453,7 +458,7 @@ export default function OrdensPage() {
                 <label>Data de entrega<input type="date" value={form.delivery_date} onChange={(event) => setForm({ ...form, delivery_date: event.target.value })} /></label>
                 <label className={styles.fullField}>Observações<textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Detalhes do pedido, laboratório, prazo..." /></label>
               </div>
-              <p className={styles.helper} style={{ marginTop: 10 }}>Ao salvar, esta O.S. entra automaticamente em <strong>Vendas</strong> com este valor. Se o status for “Cancelada”, a venda também fica cancelada.</p>
+              <p className={styles.helper} style={{ marginTop: 10 }}>Esta O.S. entra em <strong>Vendas</strong> automaticamente. Ela só conta como <strong>faturamento realizado</strong> quando o status for <strong>“Entregue”</strong> — antes disso fica como negociação. “Cancelada” cancela a venda.</p>
             </section>
 
             <div className={styles.modalFooter}><button type="button" className="btn btn-secondary" onClick={() => setFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : (editingId ? 'Atualizar O.S.' : 'Criar O.S.')}</button></div>
