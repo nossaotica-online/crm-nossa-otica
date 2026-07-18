@@ -85,6 +85,8 @@ export default function OrdensPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<OrderForm>(EMPTY_FORM);
   const [clientTerm, setClientTerm] = useState('');
+  const [viewId, setViewId] = useState<string | null>(null);
+  const selectedOrder = orders.find((o) => o.id === viewId) || null;
 
   const loadData = async () => {
     setLoading(true);
@@ -350,7 +352,7 @@ export default function OrdensPage() {
                   const info = statusInfo(order.status);
                   const saldo = (order.total || 0) - (order.down_payment || 0);
                   return (
-                    <tr key={order.id}>
+                    <tr key={order.id} onClick={() => setViewId(order.id)}>
                       <td data-label="Nº"><strong>#{order.os_number}</strong></td>
                       <td data-label="Cliente"><strong>{order.client_name}</strong>{order.phone ? <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{formatPhone(order.phone)}</div> : null}</td>
                       <td data-label="Produto">{order.product_type || '—'}</td>
@@ -358,11 +360,12 @@ export default function OrdensPage() {
                       <td data-label="Saldo" style={{ color: saldo > 0 ? '#fca5a5' : '#86efac', fontWeight: 700 }}>{brl(saldo)}</td>
                       <td data-label="Status"><span style={{ color: info.color, background: info.bg, padding: '4px 9px', borderRadius: 999, fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{info.label}</span></td>
                       <td data-label="Entrega">{formatDate(order.delivery_date)}</td>
-                      <td data-label="Ações">
+                      <td data-label="Ações" onClick={(event) => event.stopPropagation()}>
                         <div className={styles.actions}>
                           <select value={order.status} onChange={(event) => void changeStatus(order, event.target.value as ServiceOrderStatus)} style={{ padding: '5px 6px', borderRadius: 7, background: 'rgba(255,255,255,.04)', color: 'var(--text-secondary)', border: '1px solid var(--glass-border-strong)', fontSize: 10 }}>
                             {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                           </select>
+                          <button title="Ver detalhes" onClick={() => setViewId(order.id)}>Ver</button>
                           <button onClick={() => openEdit(order)}>Editar</button>
                           <button className={styles.dangerAction} onClick={() => void removeOrder(order)}>Excluir</button>
                         </div>
@@ -465,6 +468,76 @@ export default function OrdensPage() {
           </form>
         </div>
       )}
+
+      {selectedOrder && (() => {
+        const order = selectedOrder;
+        const info = statusInfo(order.status);
+        const saldo = (order.total || 0) - (order.down_payment || 0);
+        const g = (value: number | null) => (value === null || value === undefined ? '—' : String(value));
+        const vendedor = team.find((member) => member.id === order.vendedor_id)?.nome;
+        const hasGrau = [order.od_sphere, order.od_cylinder, order.od_axis, order.od_addition, order.oe_sphere, order.oe_cylinder, order.oe_axis, order.oe_addition].some((v) => v !== null);
+        return (
+          <div className={styles.overlay} onMouseDown={() => setViewId(null)}>
+            <article className={`${styles.modal} ${styles.profileModal}`} onMouseDown={(event) => event.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Ordem de Serviço #{order.os_number}</span>
+                  <h2>{order.client_name}</h2>
+                  <span style={{ display: 'inline-flex', width: 'fit-content', marginTop: 4, color: info.color, background: info.bg, padding: '4px 10px', borderRadius: 999, fontSize: 10, fontWeight: 800 }}>{info.label}</span>
+                </div>
+                <button onClick={() => setViewId(null)}>×</button>
+              </div>
+
+              <div className={styles.profileActions}>
+                <button onClick={() => { setViewId(null); openEdit(order); }}>Editar O.S.</button>
+                {order.phone ? <button onClick={() => window.open(`https://wa.me/55${onlyDigits(order.phone || '')}`, '_blank')}>Abrir WhatsApp</button> : null}
+                <button className={styles.dangerAction} onClick={() => { setViewId(null); void removeOrder(order); }}>Excluir</button>
+              </div>
+
+              <section className={styles.profileGrid}>
+                <div><span>Telefone / WhatsApp</span><strong>{order.phone ? formatPhone(order.phone) : '—'}</strong></div>
+                <div><span>CPF</span><strong>{order.cpf || '—'}</strong></div>
+                <div><span>RG</span><strong>{order.rg || '—'}</strong></div>
+                <div><span>Vendedor(a)</span><strong>{vendedor || '—'}</strong></div>
+              </section>
+
+              <section className={styles.detailSection}>
+                <h3>Produto</h3>
+                <section className={styles.profileGrid}>
+                  <div><span>Tipo de produto</span><strong>{order.product_type || '—'}</strong></div>
+                  <div><span>Armação</span><strong>{order.frame_description || '—'}</strong></div>
+                  <div className={styles.fullField}><span>Lente</span><strong>{order.lens_description || '—'}</strong></div>
+                </section>
+              </section>
+
+              <section className={styles.detailSection}>
+                <h3>Grau (OD / OE)</h3>
+                {hasGrau ? (
+                  <div className={styles.gradeTable}>
+                    <div><b>Olho</b><b>Esférico</b><b>Cilíndrico</b><b>Eixo</b><b>Adição</b></div>
+                    <div><strong>OD</strong><span>{g(order.od_sphere)}</span><span>{g(order.od_cylinder)}</span><span>{g(order.od_axis)}</span><span>{g(order.od_addition)}</span></div>
+                    <div><strong>OE</strong><span>{g(order.oe_sphere)}</span><span>{g(order.oe_cylinder)}</span><span>{g(order.oe_axis)}</span><span>{g(order.oe_addition)}</span></div>
+                  </div>
+                ) : <p className={styles.helper}>Grau não informado.</p>}
+                <p className={styles.helper} style={{ marginTop: 10 }}>DNP: {order.dnp || '—'}</p>
+              </section>
+
+              <section className={styles.detailSection}>
+                <h3>Valores e entrega</h3>
+                <section className={styles.profileGrid}>
+                  <div><span>Valor total</span><strong>{brl(order.total)}</strong></div>
+                  <div><span>Entrada / sinal</span><strong>{brl(order.down_payment)}</strong></div>
+                  <div><span>Saldo a pagar</span><strong style={{ color: saldo > 0 ? '#fca5a5' : '#86efac' }}>{brl(saldo)}</strong></div>
+                  <div><span>Forma de pagamento</span><strong>{order.payment_method || '—'}</strong></div>
+                  <div><span>Data de entrega</span><strong>{formatDate(order.delivery_date)}</strong></div>
+                  <div><span>Criada em</span><strong>{formatDate(order.created_at)}</strong></div>
+                  <div className={styles.fullField}><span>Observações</span><p>{order.notes || '—'}</p></div>
+                </section>
+              </section>
+            </article>
+          </div>
+        );
+      })()}
     </div>
   );
 }
