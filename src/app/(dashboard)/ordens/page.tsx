@@ -50,16 +50,18 @@ interface OrderForm {
   od_sphere: string; od_cylinder: string; od_axis: string; od_addition: string;
   oe_sphere: string; oe_cylinder: string; oe_axis: string; oe_addition: string;
   dnp: string;
-  total: string; down_payment: string;
+  total: string; down_payment: string; payment_method: string;
   status: ServiceOrderStatus; delivery_date: string; notes: string;
 }
+
+const PAYMENT_OPTIONS = ['Dinheiro', 'PIX', 'Cartão de débito', 'Cartão de crédito', 'Crediário / parcelado', 'Outro'];
 
 const EMPTY_FORM: OrderForm = {
   client_id: '', client_name: '', cpf: '', rg: '', phone: '',
   product_type: '', frame_description: '', lens_description: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
-  dnp: '', total: '', down_payment: '', status: 'aberta', delivery_date: '', notes: '',
+  dnp: '', total: '', down_payment: '', payment_method: '', status: 'aberta', delivery_date: '', notes: '',
 };
 
 export default function OrdensPage() {
@@ -145,6 +147,7 @@ export default function OrdensPage() {
       { label: 'Total', value: (o) => brl(o.total) },
       { label: 'Entrada', value: (o) => brl(o.down_payment) },
       { label: 'Saldo', value: (o) => brl((o.total || 0) - (o.down_payment || 0)) },
+      { label: 'Forma de pagamento', value: (o) => o.payment_method },
       { label: 'Status', value: (o) => statusInfo(o.status).label },
       { label: 'Entrega', value: (o) => formatDate(o.delivery_date) },
       { label: 'Observações', value: (o) => o.notes },
@@ -166,6 +169,7 @@ export default function OrdensPage() {
       od_sphere: s(order.od_sphere), od_cylinder: s(order.od_cylinder), od_axis: s(order.od_axis), od_addition: s(order.od_addition),
       oe_sphere: s(order.oe_sphere), oe_cylinder: s(order.oe_cylinder), oe_axis: s(order.oe_axis), oe_addition: s(order.oe_addition),
       dnp: order.dnp || '', total: s(order.total), down_payment: s(order.down_payment),
+      payment_method: order.payment_method || '',
       status: order.status, delivery_date: order.delivery_date || '', notes: order.notes || '',
     });
     setClientTerm('');
@@ -176,12 +180,41 @@ export default function OrdensPage() {
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    if (!form.client_name.trim()) return setError('Selecione o cliente da ordem.');
+    const name = form.client_name.trim();
+    if (!name) return setError('Informe o nome do cliente.');
+    let phoneDigits = onlyDigits(form.phone);
+    if ((phoneDigits.length === 12 || phoneDigits.length === 13) && phoneDigits.startsWith('55')) phoneDigits = phoneDigits.slice(2);
+
     setSaving(true);
+    let clientId: string | null = form.client_id || null;
+    let createdClient = false;
+
+    // Ordem NOVA sem cliente vinculado: cadastra o cliente automaticamente
+    if (!editingId && !clientId) {
+      if (phoneDigits.length < 10) { setSaving(false); return setError('Informe o telefone do cliente (com DDD) — é assim que o cadastro é criado.'); }
+      const existing = clients.find((c) => c.whatsapp === phoneDigits || c.secondary_phone === phoneDigits);
+      if (existing) {
+        clientId = existing.id;
+      } else {
+        const { data: newClient, error: clientError } = await supabase.from('clients')
+          .insert({ name, whatsapp: phoneDigits, cpf: form.cpf.trim() || null, rg: form.rg.trim() || null, source: 'loja' })
+          .select('id').single();
+        if (clientError || !newClient) {
+          setSaving(false);
+          const msg = /row-level security|permission|jwt|401/i.test(clientError?.message || '')
+            ? 'você precisa estar logada para gravar. Faça login com sua conta.'
+            : (clientError?.message || 'erro desconhecido');
+          return setError(`Não foi possível cadastrar o cliente: ${msg}`);
+        }
+        clientId = newClient.id;
+        createdClient = true;
+      }
+    }
+
     const payload = {
-      client_id: form.client_id || null,
-      client_name: form.client_name.trim(),
-      cpf: form.cpf.trim() || null, rg: form.rg.trim() || null, phone: onlyDigits(form.phone) || null,
+      client_id: clientId,
+      client_name: name,
+      cpf: form.cpf.trim() || null, rg: form.rg.trim() || null, phone: phoneDigits || null,
       product_type: form.product_type || null,
       frame_description: form.frame_description.trim() || null,
       lens_description: form.lens_description.trim() || null,
@@ -189,6 +222,7 @@ export default function OrdensPage() {
       oe_sphere: numberOrNull(form.oe_sphere), oe_cylinder: numberOrNull(form.oe_cylinder), oe_axis: intOrNull(form.oe_axis), oe_addition: numberOrNull(form.oe_addition),
       dnp: form.dnp.trim() || null,
       total: numberOrNull(form.total) || 0, down_payment: numberOrNull(form.down_payment) || 0,
+      payment_method: form.payment_method || null,
       status: form.status, delivery_date: form.delivery_date || null, notes: form.notes.trim() || null,
     };
     const result = editingId
@@ -202,7 +236,11 @@ export default function OrdensPage() {
       return setError(`Não foi possível salvar a O.S.: ${msg}`);
     }
     setFormOpen(false);
-    setNotice(editingId ? 'Ordem atualizada.' : 'Ordem de serviço criada.');
+    setNotice(editingId
+      ? 'Ordem atualizada.'
+      : createdClient
+        ? 'Ordem criada e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.'
+        : 'Ordem de serviço criada.');
     await loadData();
   };
 
@@ -311,31 +349,33 @@ export default function OrdensPage() {
 
             <section className={styles.formSection}>
               <h3>Cliente</h3>
-              {form.client_name ? (
-                <div className={styles.pickerSelected}>
-                  <div><strong>{form.client_name}</strong><span>{[form.cpf && `CPF ${form.cpf}`, formatPhone(form.phone)].filter(Boolean).join(' · ') || 'Sem dados'}</span></div>
-                  <button type="button" onClick={() => setForm((f) => ({ ...f, client_id: '', client_name: '' }))}>Trocar</button>
-                </div>
-              ) : (
-                <div className={styles.picker}>
-                  <input value={clientTerm} onChange={(event) => setClientTerm(event.target.value)} placeholder="Digite o nome ou o telefone do cliente" />
-                  {matchingClients.length > 0 && (
-                    <div className={styles.pickerResults}>
-                      {matchingClients.map((client) => (
-                        <button type="button" key={client.id} onClick={() => pickClient(client.id)}>
-                          <strong>{client.name}</strong><span>{formatPhone(client.whatsapp || client.secondary_phone)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {clientTerm.trim() !== '' && matchingClients.length === 0 && <p className={styles.helper}>Nenhum cliente encontrado. Cadastre primeiro na aba Clientes.</p>}
-                </div>
-              )}
-              <div className={styles.formGrid} style={{ marginTop: 12 }}>
+              <p className={styles.helper} style={{ marginBottom: 12 }}>Preencha os dados do cliente aqui. Se for cliente novo, ele é <strong>cadastrado automaticamente</strong> ao criar a O.S. — depois você completa a ficha (indicação, família, observações) na aba Clientes.</p>
+              <div className={styles.formGrid}>
+                <label className={styles.fullField}>Nome do cliente *<input required value={form.client_name} onChange={(event) => setForm({ ...form, client_name: event.target.value })} placeholder="Nome completo" /></label>
+                <label>Telefone / WhatsApp<input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: formatPhone(event.target.value) })} placeholder="(62) 99999-9999" /></label>
                 <label>CPF<input value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} placeholder="000.000.000-00" /></label>
                 <label>RG<input value={form.rg} onChange={(event) => setForm({ ...form, rg: event.target.value })} /></label>
-                <label>Telefone<input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></label>
               </div>
+              {form.client_id ? (
+                <p className={styles.helper} style={{ marginTop: 10 }}>✓ Ligado a um cliente já cadastrado. <button type="button" onClick={() => setForm((f) => ({ ...f, client_id: '' }))} style={{ color: 'var(--accent-primary)', fontWeight: 800, background: 'none', border: 0, cursor: 'pointer' }}>Desvincular</button></p>
+              ) : !editingId ? (
+                <details style={{ marginTop: 10 }}>
+                  <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12 }}>Esse cliente já é cadastrado? Buscar para não duplicar</summary>
+                  <div className={styles.picker} style={{ marginTop: 8 }}>
+                    <input value={clientTerm} onChange={(event) => setClientTerm(event.target.value)} placeholder="Digite o nome ou o telefone" />
+                    {clientTerm.trim() !== '' && matchingClients.length > 0 && (
+                      <div className={styles.pickerResults}>
+                        {matchingClients.map((client) => (
+                          <button type="button" key={client.id} onClick={() => pickClient(client.id)}>
+                            <strong>{client.name}</strong><span>{formatPhone(client.whatsapp || client.secondary_phone)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {clientTerm.trim() !== '' && matchingClients.length === 0 && <p className={styles.helper}>Ninguém com esse nome/telefone — pode seguir, será cadastrado como novo.</p>}
+                  </div>
+                </details>
+              ) : null}
             </section>
 
             <section className={styles.formSection}>
@@ -377,6 +417,7 @@ export default function OrdensPage() {
                 <label>Valor total (R$)<input inputMode="decimal" value={form.total} onChange={(event) => setForm({ ...form, total: event.target.value })} placeholder="0,00" /></label>
                 <label>Entrada / sinal (R$)<input inputMode="decimal" value={form.down_payment} onChange={(event) => setForm({ ...form, down_payment: event.target.value })} placeholder="0,00" /></label>
                 <label>Saldo a pagar<input value={brl(balance(form.total, form.down_payment))} disabled /></label>
+                <label>Forma de pagamento<select value={form.payment_method} onChange={(event) => setForm({ ...form, payment_method: event.target.value })}><option value="">Selecione...</option>{PAYMENT_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
                 <label>Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ServiceOrderStatus })}>{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                 <label>Data de entrega<input type="date" value={form.delivery_date} onChange={(event) => setForm({ ...form, delivery_date: event.target.value })} /></label>
                 <label className={styles.fullField}>Observações<textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Detalhes do pedido, laboratório, prazo..." /></label>

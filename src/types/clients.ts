@@ -106,6 +106,7 @@ export interface ServiceOrder {
   dnp: string | null;
   total: number;
   down_payment: number;
+  payment_method: string | null;
   status: ServiceOrderStatus;
   delivery_date: string | null;
   notes: string | null;
