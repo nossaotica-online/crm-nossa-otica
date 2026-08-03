@@ -63,6 +63,19 @@ const numberOrNull = (value: string) => {
   const parsed = Number(value.replace(',', '.'));
   return Number.isNaN(parsed) ? null : parsed;
 };
+// Quantos dias o pedido fica no laboratório: do envio até o prazo de entrega dele.
+const daysInLab = (sent: string | null | undefined, due: string | null | undefined) => {
+  if (!sent || !due) return null;
+  const from = new Date(`${sent.slice(0, 10)}T12:00:00`).getTime();
+  const to = new Date(`${due.slice(0, 10)}T12:00:00`).getTime();
+  if (Number.isNaN(from) || Number.isNaN(to)) return null;
+  return Math.round((to - from) / 86400000);
+};
+const daysLabel = (days: number | null) => {
+  if (days === null) return null;
+  if (days < 0) return 'data do prazo antes do envio';
+  return `${days} ${days === 1 ? 'dia' : 'dias'} no laboratório`;
+};
 const intOrNull = (value: string) => {
   const parsed = numberOrNull(value);
   return parsed === null ? null : Math.round(parsed);
@@ -72,7 +85,7 @@ interface OrderForm {
   client_id: string;
   client_name: string;
   cpf: string; rg: string; phone: string;
-  product_type: string; frame_description: string; lens_description: string; laboratory: string; lab_sent_date: string;
+  product_type: string; frame_description: string; lens_description: string; laboratory: string; lab_sent_date: string; lab_due_date: string;
   od_sphere: string; od_cylinder: string; od_axis: string; od_addition: string;
   oe_sphere: string; oe_cylinder: string; oe_axis: string; oe_addition: string;
   dnp: string;
@@ -84,7 +97,7 @@ const PAYMENT_OPTIONS = ['Dinheiro', 'PIX', 'Cartão de débito', 'Cartão de cr
 
 const EMPTY_FORM: OrderForm = {
   client_id: '', client_name: '', cpf: '', rg: '', phone: '',
-  product_type: '', frame_description: '', lens_description: '', laboratory: '', lab_sent_date: '',
+  product_type: '', frame_description: '', lens_description: '', laboratory: '', lab_sent_date: '', lab_due_date: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
   dnp: '', total: '', down_payment: '', payment_method: '', vendedor_id: '', status: 'aberta', delivery_date: '', notes: '',
@@ -181,7 +194,9 @@ export default function OrdensPage() {
       { label: 'Armação', value: (o) => o.frame_description },
       { label: 'Lente', value: (o) => o.lens_description },
       { label: 'Laboratório', value: (o) => o.laboratory },
-      { label: 'Postado no laboratório', value: (o) => formatDate(o.lab_sent_date) },
+      { label: 'Enviado ao laboratório', value: (o) => formatDate(o.lab_sent_date) },
+      { label: 'Laboratório entrega em', value: (o) => formatDate(o.lab_due_date) },
+      { label: 'Dias no laboratório', value: (o) => daysInLab(o.lab_sent_date, o.lab_due_date) },
       { label: 'Grau OD', value: (o) => grau(o.od_sphere, o.od_cylinder, o.od_axis, o.od_addition) },
       { label: 'Grau OE', value: (o) => grau(o.oe_sphere, o.oe_cylinder, o.oe_axis, o.oe_addition) },
       { label: 'DNP', value: (o) => o.dnp },
@@ -208,7 +223,7 @@ export default function OrdensPage() {
       client_id: order.client_id || '', client_name: order.client_name,
       cpf: order.cpf || '', rg: order.rg || '', phone: order.phone || '',
       product_type: order.product_type || '', frame_description: order.frame_description || '', lens_description: order.lens_description || '',
-      laboratory: order.laboratory || '', lab_sent_date: order.lab_sent_date || '',
+      laboratory: order.laboratory || '', lab_sent_date: order.lab_sent_date || '', lab_due_date: order.lab_due_date || '',
       od_sphere: s(order.od_sphere), od_cylinder: s(order.od_cylinder), od_axis: s(order.od_axis), od_addition: s(order.od_addition),
       oe_sphere: s(order.oe_sphere), oe_cylinder: s(order.oe_cylinder), oe_axis: s(order.oe_axis), oe_addition: s(order.oe_addition),
       dnp: order.dnp || '', total: s(order.total), down_payment: s(order.down_payment),
@@ -270,6 +285,7 @@ export default function OrdensPage() {
       lens_description: form.lens_description.trim() || null,
       laboratory: form.laboratory.trim() || null,
       lab_sent_date: form.lab_sent_date || null,
+      lab_due_date: form.lab_due_date || null,
       od_sphere: numberOrNull(form.od_sphere), od_cylinder: numberOrNull(form.od_cylinder), od_axis: intOrNull(form.od_axis), od_addition: numberOrNull(form.od_addition),
       oe_sphere: numberOrNull(form.oe_sphere), oe_cylinder: numberOrNull(form.oe_cylinder), oe_axis: intOrNull(form.oe_axis), oe_addition: numberOrNull(form.oe_addition),
       dnp: form.dnp.trim() || null,
@@ -278,7 +294,7 @@ export default function OrdensPage() {
       vendedor_id: vendedorId,
       status: form.status, delivery_date: form.delivery_date || null, notes: form.notes.trim() || null,
     };
-    const write = (body: typeof payload | Omit<typeof payload, 'laboratory' | 'lab_sent_date'>) => (editingId
+    const write = (body: typeof payload | Omit<typeof payload, 'laboratory' | 'lab_sent_date' | 'lab_due_date'>) => (editingId
       ? supabase.from('service_orders').update(body).eq('id', editingId).select().single()
       : supabase.from('service_orders').insert(body).select().single());
 
@@ -286,8 +302,8 @@ export default function OrdensPage() {
     // Se as migrations 026/027 ainda não foram rodadas, as colunas do laboratório
     // não existem. Grava a O.S. mesmo assim (sem elas) para não perder o pedido.
     let labColumnMissing = false;
-    if (result.error && /laborator|lab_sent_date/i.test(result.error.message) && /schema cache|does not exist|column/i.test(result.error.message)) {
-      const { laboratory: _laboratory, lab_sent_date: _labSentDate, ...withoutLab } = payload;
+    if (result.error && /laborator|lab_sent_date|lab_due_date/i.test(result.error.message) && /schema cache|does not exist|column/i.test(result.error.message)) {
+      const { laboratory: _laboratory, lab_sent_date: _labSentDate, lab_due_date: _labDueDate, ...withoutLab } = payload;
       labColumnMissing = true;
       result = await write(withoutLab);
     }
@@ -322,7 +338,7 @@ export default function OrdensPage() {
       !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
       saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
       saleError ? `(aviso: não foi possível sincronizar com Vendas — ${saleError.message})` : null,
-      labColumnMissing ? '(atenção: o laboratório e a data de postagem NÃO foram salvos — rode as migrations 026 e 027 no Supabase.)' : null,
+      labColumnMissing ? '(atenção: os dados do laboratório NÃO foram salvos — rode as migrations 026, 027 e 028 no Supabase.)' : null,
     ].filter(Boolean).join(' '));
     await loadData();
   };
@@ -396,7 +412,7 @@ export default function OrdensPage() {
         ) : (
           <div className={styles.tableWrap}>
             <table>
-              <thead><tr><th>Nº</th><th>Cliente</th><th>Produto</th><th>Laboratório</th><th>Postado no lab</th><th>Saldo</th><th>Status</th><th>Total</th><th>Ações</th></tr></thead>
+              <thead><tr><th>Nº</th><th>Cliente</th><th>Produto</th><th>Laboratório</th><th>Enviado ao lab</th><th>Lab entrega em</th><th>Saldo</th><th>Status</th><th>Total</th><th>Ações</th></tr></thead>
               <tbody>
                 {filtered.map((order) => {
                   const info = statusInfo(order.status);
@@ -407,7 +423,13 @@ export default function OrdensPage() {
                       <td data-label="Cliente"><strong>{order.client_name}</strong>{order.phone ? <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{formatPhone(order.phone)}</div> : null}</td>
                       <td data-label="Produto">{order.product_type || '—'}</td>
                       <td data-label="Laboratório">{order.laboratory ? <span style={LAB_BADGE_STYLE}>{order.laboratory}</span> : <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
-                      <td data-label="Postado no lab">{formatDate(order.lab_sent_date)}</td>
+                      <td data-label="Enviado ao lab">{formatDate(order.lab_sent_date)}</td>
+                      <td data-label="Lab entrega em">
+                        {formatDate(order.lab_due_date)}
+                        {daysLabel(daysInLab(order.lab_sent_date, order.lab_due_date))
+                          ? <div style={{ fontSize: 11, fontWeight: 800, color: '#c084fc' }}>{daysLabel(daysInLab(order.lab_sent_date, order.lab_due_date))}</div>
+                          : null}
+                      </td>
                       <td data-label="Saldo" style={{ color: saldo > 0 ? '#fca5a5' : '#86efac', fontWeight: 700 }}>{brl(saldo)}</td>
                       <td data-label="Status"><span style={{ color: info.color, background: info.bg, padding: '4px 9px', borderRadius: 999, fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{info.label}</span></td>
                       <td data-label="Total">{brl(order.total)}</td>
@@ -491,7 +513,13 @@ export default function OrdensPage() {
                 {labOther && (
                   <label>Qual laboratório?<input maxLength={120} value={form.laboratory} onChange={(event) => setForm({ ...form, laboratory: event.target.value })} placeholder="Nome do laboratório" /></label>
                 )}
-                <label>Postado no laboratório em<input type="date" value={form.lab_sent_date} onChange={(event) => setForm({ ...form, lab_sent_date: event.target.value })} /></label>
+                <label>Enviado ao laboratório em<input type="date" value={form.lab_sent_date} onChange={(event) => setForm({ ...form, lab_sent_date: event.target.value })} /></label>
+                <label>Laboratório entrega em<input type="date" value={form.lab_due_date} onChange={(event) => setForm({ ...form, lab_due_date: event.target.value })} /></label>
+                {daysLabel(daysInLab(form.lab_sent_date, form.lab_due_date)) ? (
+                  <p className={styles.helper} style={{ gridColumn: '1 / -1', margin: 0, color: '#c084fc', fontWeight: 800, fontSize: 13 }}>
+                    ⏱ {daysLabel(daysInLab(form.lab_sent_date, form.lab_due_date))}
+                  </p>
+                ) : null}
               </div>
             </section>
 
@@ -577,7 +605,8 @@ export default function OrdensPage() {
                   <div><span>Tipo de produto</span><strong>{order.product_type || '—'}</strong></div>
                   <div><span>Armação</span><strong>{order.frame_description || '—'}</strong></div>
                   <div><span>Laboratório</span>{order.laboratory ? <span style={{ ...LAB_BADGE_STYLE, marginTop: 2 }}>{order.laboratory}</span> : <strong>—</strong>}</div>
-                  <div><span>Postado no laboratório em</span><strong>{formatDate(order.lab_sent_date)}</strong></div>
+                  <div><span>Enviado ao laboratório em</span><strong>{formatDate(order.lab_sent_date)}</strong></div>
+                  <div><span>Laboratório entrega em</span><strong>{formatDate(order.lab_due_date)}</strong>{daysLabel(daysInLab(order.lab_sent_date, order.lab_due_date)) ? <em style={{ display: 'block', color: '#c084fc', fontWeight: 800, fontStyle: 'normal', fontSize: 12 }}>⏱ {daysLabel(daysInLab(order.lab_sent_date, order.lab_due_date))}</em> : null}</div>
                   <div className={styles.fullField}><span>Lente</span><strong>{order.lens_description || '—'}</strong></div>
                 </section>
               </section>
