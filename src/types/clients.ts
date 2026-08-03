@@ -96,6 +96,7 @@ export interface ServiceOrder {
   frame_description: string | null;
   lens_description: string | null;
   laboratory: string | null;
+  lab_sent_date: string | null;
   od_sphere: number | null;
   od_cylinder: number | null;
   od_axis: number | null;
