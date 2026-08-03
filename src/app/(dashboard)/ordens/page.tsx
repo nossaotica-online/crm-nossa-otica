@@ -13,6 +13,10 @@ const PRODUCT_OPTIONS = [
   'Óculos completo', 'Só as lentes', 'Só a armação', 'Óculos de sol', 'Lente de contato', 'Manutenção / conserto',
 ];
 
+// Laboratórios com que a ótica trabalha. "Outro" libera um campo livre.
+const LAB_OPTIONS = ['Unilentes', 'Vision Lab', 'Prolentes', 'Art Lentes', 'Hoya', 'Orlac'];
+const OTHER_LAB = 'Outro';
+
 const STATUS_OPTIONS: { value: ServiceOrderStatus; label: string; color: string; bg: string }[] = [
   { value: 'aberta', label: 'Aberta', color: '#cbd5e1', bg: 'rgba(148,163,184,.15)' },
   { value: 'em_producao', label: 'Em produção', color: '#f59e0b', bg: 'rgba(245,158,11,.15)' },
@@ -54,7 +58,7 @@ interface OrderForm {
   client_id: string;
   client_name: string;
   cpf: string; rg: string; phone: string;
-  product_type: string; frame_description: string; lens_description: string;
+  product_type: string; frame_description: string; lens_description: string; laboratory: string;
   od_sphere: string; od_cylinder: string; od_axis: string; od_addition: string;
   oe_sphere: string; oe_cylinder: string; oe_axis: string; oe_addition: string;
   dnp: string;
@@ -66,7 +70,7 @@ const PAYMENT_OPTIONS = ['Dinheiro', 'PIX', 'Cartão de débito', 'Cartão de cr
 
 const EMPTY_FORM: OrderForm = {
   client_id: '', client_name: '', cpf: '', rg: '', phone: '',
-  product_type: '', frame_description: '', lens_description: '',
+  product_type: '', frame_description: '', lens_description: '', laboratory: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
   dnp: '', total: '', down_payment: '', payment_method: '', vendedor_id: '', status: 'aberta', delivery_date: '', notes: '',
@@ -87,6 +91,8 @@ export default function OrdensPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<OrderForm>(EMPTY_FORM);
   const [clientTerm, setClientTerm] = useState('');
+  const [labOther, setLabOther] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const selectedOrder = orders.find((o) => o.id === viewId) || null;
 
@@ -112,6 +118,12 @@ export default function OrdensPage() {
 
   useEffect(() => { void loadData(); }, []);
 
+  // Quem está logada. Se nenhum vendedor for escolhido, a O.S. e a venda ficam
+  // no nome de quem cadastrou — sem isso o RLS recusa a gravação de quem não é admin.
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
+  }, [supabase]);
+
   const filtered = useMemo(() => {
     const term = normalize(search.trim());
     const digits = onlyDigits(search);
@@ -119,7 +131,7 @@ export default function OrdensPage() {
       if (statusFilter !== 'todos' && order.status !== statusFilter) return false;
       if (!term) return true;
       if (String(order.os_number).includes(digits) && digits) return true;
-      const haystack = normalize([order.client_name, order.cpf, order.product_type, order.notes].filter(Boolean).join(' '));
+      const haystack = normalize([order.client_name, order.cpf, order.product_type, order.laboratory, order.notes].filter(Boolean).join(' '));
       const phoneMatch = digits.length >= 3 && onlyDigits(order.phone || '').includes(digits);
       return haystack.includes(term) || phoneMatch;
     });
@@ -154,6 +166,7 @@ export default function OrdensPage() {
       { label: 'Produto', value: (o) => o.product_type },
       { label: 'Armação', value: (o) => o.frame_description },
       { label: 'Lente', value: (o) => o.lens_description },
+      { label: 'Laboratório', value: (o) => o.laboratory },
       { label: 'Grau OD', value: (o) => grau(o.od_sphere, o.od_cylinder, o.od_axis, o.od_addition) },
       { label: 'Grau OE', value: (o) => grau(o.oe_sphere, o.oe_cylinder, o.oe_axis, o.oe_addition) },
       { label: 'DNP', value: (o) => o.dnp },
@@ -171,7 +184,7 @@ export default function OrdensPage() {
     setNotice(`Backup de ${orders.length} ordem(ns) baixado. Guarde o arquivo em local seguro.`);
   };
 
-  const openNew = () => { setEditingId(null); setForm(EMPTY_FORM); setClientTerm(''); setError(''); setFormOpen(true); };
+  const openNew = () => { setEditingId(null); setForm(EMPTY_FORM); setClientTerm(''); setLabOther(false); setError(''); setFormOpen(true); };
 
   const openEdit = (order: ServiceOrder) => {
     const s = (value: number | null) => (value === null || value === undefined ? '' : String(value));
@@ -180,6 +193,7 @@ export default function OrdensPage() {
       client_id: order.client_id || '', client_name: order.client_name,
       cpf: order.cpf || '', rg: order.rg || '', phone: order.phone || '',
       product_type: order.product_type || '', frame_description: order.frame_description || '', lens_description: order.lens_description || '',
+      laboratory: order.laboratory || '',
       od_sphere: s(order.od_sphere), od_cylinder: s(order.od_cylinder), od_axis: s(order.od_axis), od_addition: s(order.od_addition),
       oe_sphere: s(order.oe_sphere), oe_cylinder: s(order.oe_cylinder), oe_axis: s(order.oe_axis), oe_addition: s(order.oe_addition),
       dnp: order.dnp || '', total: s(order.total), down_payment: s(order.down_payment),
@@ -187,6 +201,7 @@ export default function OrdensPage() {
       status: order.status, delivery_date: order.delivery_date || '', notes: order.notes || '',
     });
     setClientTerm('');
+    setLabOther(Boolean(order.laboratory) && !LAB_OPTIONS.includes(order.laboratory || ''));
     setError('');
     setFormOpen(true);
   };
@@ -196,6 +211,10 @@ export default function OrdensPage() {
     setError('');
     const name = form.client_name.trim();
     if (!name) return setError('Informe o nome do cliente.');
+    // O banco recusa entrada maior que o total (constraint). Avisa antes de tentar gravar.
+    if ((numberOrNull(form.down_payment) || 0) > (numberOrNull(form.total) || 0)) {
+      return setError('A entrada não pode ser maior que o valor total. Confira os dois campos.');
+    }
     let phoneDigits = onlyDigits(form.phone);
     if ((phoneDigits.length === 12 || phoneDigits.length === 13) && phoneDigits.startsWith('55')) phoneDigits = phoneDigits.slice(2);
 
@@ -226,6 +245,7 @@ export default function OrdensPage() {
     }
 
     const total = numberOrNull(form.total) || 0;
+    const vendedorId = form.vendedor_id || currentUserId || null;
     const payload = {
       client_id: clientId,
       client_name: name,
@@ -233,17 +253,28 @@ export default function OrdensPage() {
       product_type: form.product_type || null,
       frame_description: form.frame_description.trim() || null,
       lens_description: form.lens_description.trim() || null,
+      laboratory: form.laboratory.trim() || null,
       od_sphere: numberOrNull(form.od_sphere), od_cylinder: numberOrNull(form.od_cylinder), od_axis: intOrNull(form.od_axis), od_addition: numberOrNull(form.od_addition),
       oe_sphere: numberOrNull(form.oe_sphere), oe_cylinder: numberOrNull(form.oe_cylinder), oe_axis: intOrNull(form.oe_axis), oe_addition: numberOrNull(form.oe_addition),
       dnp: form.dnp.trim() || null,
       total, down_payment: numberOrNull(form.down_payment) || 0,
       payment_method: form.payment_method || null,
-      vendedor_id: form.vendedor_id || null,
+      vendedor_id: vendedorId,
       status: form.status, delivery_date: form.delivery_date || null, notes: form.notes.trim() || null,
     };
-    const result = editingId
-      ? await supabase.from('service_orders').update(payload).eq('id', editingId).select().single()
-      : await supabase.from('service_orders').insert(payload).select().single();
+    const write = (body: typeof payload | Omit<typeof payload, 'laboratory'>) => (editingId
+      ? supabase.from('service_orders').update(body).eq('id', editingId).select().single()
+      : supabase.from('service_orders').insert(body).select().single());
+
+    let result = await write(payload);
+    // Se a migration 026 ainda não foi rodada, a coluna laboratory não existe.
+    // Grava a O.S. mesmo assim (sem o laboratório) para não perder o pedido.
+    let labColumnMissing = false;
+    if (result.error && /laborator/i.test(result.error.message) && /schema cache|does not exist|column/i.test(result.error.message)) {
+      const { laboratory: _laboratory, ...withoutLab } = payload;
+      labColumnMissing = true;
+      result = await write(withoutLab);
+    }
     if (result.error || !result.data) {
       setSaving(false);
       const msg = /row-level security|permission|jwt|401/i.test(result.error?.message || '')
@@ -258,7 +289,7 @@ export default function OrdensPage() {
     const { error: saleError } = await supabase.from('sales').upsert({
       service_order_id: order.id,
       client_id: clientId,
-      vendedor_id: form.vendedor_id || null,
+      vendedor_id: vendedorId,
       servico_id: null,
       servico_nome: form.product_type || 'Óculos completos',
       valor: total,
@@ -275,6 +306,7 @@ export default function OrdensPage() {
       !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
       saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
       saleError ? `(aviso: não foi possível sincronizar com Vendas — ${saleError.message})` : null,
+      labColumnMissing ? '(atenção: o laboratório NÃO foi salvo — rode a migration 026 no Supabase.)' : null,
     ].filter(Boolean).join(' '));
     await loadData();
   };
@@ -357,7 +389,7 @@ export default function OrdensPage() {
                     <tr key={order.id} onClick={() => setViewId(order.id)}>
                       <td data-label="Nº"><strong>#{order.os_number}</strong></td>
                       <td data-label="Cliente"><strong>{order.client_name}</strong>{order.phone ? <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{formatPhone(order.phone)}</div> : null}</td>
-                      <td data-label="Produto">{order.product_type || '—'}</td>
+                      <td data-label="Produto">{order.product_type || '—'}{order.laboratory ? <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Lab: {order.laboratory}</div> : null}</td>
                       <td data-label="Total">{brl(order.total)}</td>
                       <td data-label="Saldo" style={{ color: saldo > 0 ? '#fca5a5' : '#86efac', fontWeight: 700 }}>{brl(saldo)}</td>
                       <td data-label="Status"><span style={{ color: info.color, background: info.bg, padding: '4px 9px', borderRadius: 999, fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{info.label}</span></td>
@@ -391,7 +423,7 @@ export default function OrdensPage() {
               <h3>Cliente</h3>
               <p className={styles.helper} style={{ marginBottom: 12 }}>Preencha os dados do cliente aqui. Se for cliente novo, ele é <strong>cadastrado automaticamente</strong> ao criar a O.S. — depois você completa a ficha (indicação, família, observações) na aba Clientes.</p>
               <div className={styles.formGrid}>
-                <label className={styles.fullField}>Nome do cliente *<input required value={form.client_name} onChange={(event) => setForm({ ...form, client_name: event.target.value })} placeholder="Nome completo" /></label>
+                <label className={styles.fullField}>Nome do cliente *<input required maxLength={160} value={form.client_name} onChange={(event) => setForm({ ...form, client_name: event.target.value })} placeholder="Nome completo" /></label>
                 <label>Telefone / WhatsApp<input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: formatPhone(event.target.value) })} placeholder="(62) 99999-9999" /></label>
                 <label>CPF<input value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} placeholder="000.000.000-00" /></label>
                 <label>RG<input value={form.rg} onChange={(event) => setForm({ ...form, rg: event.target.value })} /></label>
@@ -422,8 +454,26 @@ export default function OrdensPage() {
               <h3>Produto</h3>
               <div className={styles.formGrid}>
                 <label>Tipo de produto<select value={form.product_type} onChange={(event) => setForm({ ...form, product_type: event.target.value })}><option value="">Selecione...</option>{PRODUCT_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
-                <label>Armação (marca / modelo / cor)<input value={form.frame_description} onChange={(event) => setForm({ ...form, frame_description: event.target.value })} /></label>
-                <label className={styles.fullField}>Lente (tipo / tratamento)<input value={form.lens_description} onChange={(event) => setForm({ ...form, lens_description: event.target.value })} placeholder="Ex: multifocal, antirreflexo, transitions" /></label>
+                <label>Armação (marca / modelo / cor)<input maxLength={500} value={form.frame_description} onChange={(event) => setForm({ ...form, frame_description: event.target.value })} /></label>
+                <label className={styles.fullField}>Lente (tipo / tratamento)<input maxLength={500} value={form.lens_description} onChange={(event) => setForm({ ...form, lens_description: event.target.value })} placeholder="Ex: multifocal, antirreflexo, transitions" /></label>
+                <label>Laboratório
+                  <select
+                    value={labOther ? OTHER_LAB : form.laboratory}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (value === OTHER_LAB) { setLabOther(true); setForm({ ...form, laboratory: '' }); return; }
+                      setLabOther(false);
+                      setForm({ ...form, laboratory: value });
+                    }}
+                  >
+                    <option value="">Selecione...</option>
+                    {LAB_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                    <option value={OTHER_LAB}>Outro laboratório...</option>
+                  </select>
+                </label>
+                {labOther && (
+                  <label>Qual laboratório?<input maxLength={120} value={form.laboratory} onChange={(event) => setForm({ ...form, laboratory: event.target.value })} placeholder="Nome do laboratório" /></label>
+                )}
               </div>
             </section>
 
@@ -461,7 +511,7 @@ export default function OrdensPage() {
                 <label>Vendedor(a)<select value={form.vendedor_id} onChange={(event) => setForm({ ...form, vendedor_id: event.target.value })}><option value="">Selecione...</option>{team.map((member) => <option key={member.id} value={member.id}>{member.nome}</option>)}</select></label>
                 <label>Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ServiceOrderStatus })}>{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                 <label>Data de entrega<input type="date" value={form.delivery_date} onChange={(event) => setForm({ ...form, delivery_date: event.target.value })} /></label>
-                <label className={styles.fullField}>Observações<textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Detalhes do pedido, laboratório, prazo..." /></label>
+                <label className={styles.fullField}>Observações<textarea rows={3} maxLength={5000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Detalhes do pedido, prazo, combinados com o cliente..." /></label>
               </div>
               <p className={styles.helper} style={{ marginTop: 10 }}>Esta O.S. entra em <strong>Vendas</strong> automaticamente. Ela só conta como <strong>faturamento realizado</strong> quando o status for <strong>“Entregue”</strong> — antes disso fica como negociação. “Cancelada” cancela a venda.</p>
             </section>
@@ -508,6 +558,7 @@ export default function OrdensPage() {
                 <section className={styles.profileGrid}>
                   <div><span>Tipo de produto</span><strong>{order.product_type || '—'}</strong></div>
                   <div><span>Armação</span><strong>{order.frame_description || '—'}</strong></div>
+                  <div><span>Laboratório</span><strong>{order.laboratory || '—'}</strong></div>
                   <div className={styles.fullField}><span>Lente</span><strong>{order.lens_description || '—'}</strong></div>
                 </section>
               </section>
