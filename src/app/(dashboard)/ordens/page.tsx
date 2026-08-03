@@ -17,20 +17,10 @@ const PRODUCT_OPTIONS = [
 const LAB_OPTIONS = ['Unilentes', 'Vision Lab', 'Prolentes', 'Art Lentes', 'Hoya', 'Orlac'];
 const OTHER_LAB = 'Outro';
 
-// Uma cor por laboratório: a dona precisa bater o olho na lista e saber pra onde foi o pedido.
-const LAB_COLORS: Record<string, { color: string; bg: string }> = {
-  'Unilentes': { color: '#60a5fa', bg: 'rgba(96,165,250,.18)' },
-  'Vision Lab': { color: '#c084fc', bg: 'rgba(192,132,252,.18)' },
-  'Prolentes': { color: '#4ade80', bg: 'rgba(74,222,128,.18)' },
-  'Art Lentes': { color: '#fb923c', bg: 'rgba(251,146,60,.18)' },
-  'Hoya': { color: '#f472b6', bg: 'rgba(244,114,182,.18)' },
-  'Orlac': { color: '#facc15', bg: 'rgba(250,204,21,.18)' },
-};
-const OTHER_LAB_COLOR = { color: '#e2e8f0', bg: 'rgba(148,163,184,.20)' };
-const labInfo = (lab: string | null | undefined) => (lab && LAB_COLORS[lab]) || OTHER_LAB_COLOR;
-
-const labBadgeStyle = (lab: string | null | undefined): React.CSSProperties => ({
-  ...labInfo(lab),
+// Etiqueta do laboratório: roxo para todos, grande e em destaque na lista.
+const LAB_BADGE_STYLE: React.CSSProperties = {
+  color: '#c084fc',
+  background: 'rgba(192,132,252,.18)',
   display: 'inline-block',
   padding: '6px 13px',
   borderRadius: 999,
@@ -38,7 +28,7 @@ const labBadgeStyle = (lab: string | null | undefined): React.CSSProperties => (
   fontWeight: 800,
   letterSpacing: .2,
   whiteSpace: 'nowrap',
-});
+};
 
 const STATUS_OPTIONS: { value: ServiceOrderStatus; label: string; color: string; bg: string }[] = [
   { value: 'aberta', label: 'Aberta', color: '#cbd5e1', bg: 'rgba(148,163,184,.15)' },
@@ -413,7 +403,7 @@ export default function OrdensPage() {
                       <td data-label="Nº"><strong>#{order.os_number}</strong></td>
                       <td data-label="Cliente"><strong>{order.client_name}</strong>{order.phone ? <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{formatPhone(order.phone)}</div> : null}</td>
                       <td data-label="Produto">{order.product_type || '—'}</td>
-                      <td data-label="Laboratório">{order.laboratory ? <span style={labBadgeStyle(order.laboratory)}>{order.laboratory}</span> : <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
+                      <td data-label="Laboratório">{order.laboratory ? <span style={LAB_BADGE_STYLE}>{order.laboratory}</span> : <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
                       <td data-label="Total">{brl(order.total)}</td>
                       <td data-label="Saldo" style={{ color: saldo > 0 ? '#fca5a5' : '#86efac', fontWeight: 700 }}>{brl(saldo)}</td>
                       <td data-label="Status"><span style={{ color: info.color, background: info.bg, padding: '4px 9px', borderRadius: 999, fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{info.label}</span></td>
@@ -582,7 +572,7 @@ export default function OrdensPage() {
                 <section className={styles.profileGrid}>
                   <div><span>Tipo de produto</span><strong>{order.product_type || '—'}</strong></div>
                   <div><span>Armação</span><strong>{order.frame_description || '—'}</strong></div>
-                  <div><span>Laboratório</span>{order.laboratory ? <span style={{ ...labBadgeStyle(order.laboratory), marginTop: 2 }}>{order.laboratory}</span> : <strong>—</strong>}</div>
+                  <div><span>Laboratório</span>{order.laboratory ? <span style={{ ...LAB_BADGE_STYLE, marginTop: 2 }}>{order.laboratory}</span> : <strong>—</strong>}</div>
                   <div className={styles.fullField}><span>Lente</span><strong>{order.lens_description || '—'}</strong></div>
                 </section>
               </section>
