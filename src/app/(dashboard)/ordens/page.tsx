@@ -13,8 +13,9 @@ const PRODUCT_OPTIONS = [
   'Óculos completo', 'Só as lentes', 'Só a armação', 'Óculos de sol', 'Lente de contato', 'Manutenção / conserto',
 ];
 
-// Laboratórios com que a ótica trabalha. "Outro" libera um campo livre.
-const LAB_OPTIONS = ['Unilentes', 'Vision Lab', 'Prolentes', 'Art Lentes', 'Hoya', 'Orlac'];
+// Laboratórios com que a ótica trabalha: os de óculos e os de lente de
+// contato na mesma lista. "Outro" libera um campo livre.
+const LAB_OPTIONS = ['Unilentes', 'Vision Lab', 'Prolentes', 'Art Lentes', 'Hoya', 'Orlac', 'Solótica', 'Optix'];
 const OTHER_LAB = 'Outro';
 
 // Etiqueta do laboratório: roxo para todos, grande e em destaque na lista.
