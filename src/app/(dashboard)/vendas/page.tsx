@@ -65,7 +65,7 @@ export default function SalesPage() {
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <div>
           <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Faturamento & Vendas</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Faturamento & Orçamentos</h1>
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export default function SalesPage() {
       <div className="mobile-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>Nossa Ótica CRM</span>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Faturamento & Vendas</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0 0 0', letterSpacing: '-0.5px' }}>Faturamento & Orçamentos</h1>
         </div>
 
         <button
@@ -93,7 +93,7 @@ export default function SalesPage() {
           className="btn btn-primary"
           style={{ fontWeight: 700, padding: '10px 20px' }}
         >
-          + Registrar Venda
+          + Registrar Orçamento
         </button>
       </div>
 
@@ -106,7 +106,7 @@ export default function SalesPage() {
             R$ {totalRevenue.toLocaleString('pt-BR')}
           </h2>
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', display: 'block', marginTop: '8px' }}>
-            Vendas fechadas
+            Orçamentos fechados
           </span>
         </div>
 
@@ -116,7 +116,7 @@ export default function SalesPage() {
             R$ {averageTicket.toLocaleString('pt-BR')}
           </h2>
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', display: 'block', marginTop: '8px' }}>
-            Valor médio por venda
+            Valor médio por orçamento
           </span>
         </div>
 
@@ -134,7 +134,7 @@ export default function SalesPage() {
 
       {/* Sales List Table */}
       <div className="glass-card" style={{ borderRadius: '24px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Vendas realizadas</h3>
+        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Orçamentos fechados</h3>
 
         <div className="table-scroll">
         <table className="table" style={{ fontSize: '13.5px' }}>
@@ -145,7 +145,7 @@ export default function SalesPage() {
               <th>Vendedor(a)</th>
               <th>Parcelas</th>
               <th>Status</th>
-              <th style={{ textAlign: 'right', paddingRight: 0 }}>Valor da Venda</th>
+              <th style={{ textAlign: 'right', paddingRight: 0 }}>Valor</th>
             </tr>
           </thead>
           <tbody>
@@ -187,7 +187,7 @@ export default function SalesPage() {
             {sales.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '24px 0' }}>
-                  Nenhuma venda registrada ainda.
+                  Nenhum orçamento registrado ainda.
                 </td>
               </tr>
             )}
@@ -225,7 +225,7 @@ export default function SalesPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Registrar Venda</h3>
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>Registrar Orçamento</h3>
               <button
                 type="button"
                 onClick={() => setIsNewSaleModalOpen(false)}
@@ -263,7 +263,7 @@ export default function SalesPage() {
             {/* Service Name */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Produto vendido
+                Produto do orçamento
               </label>
               <select
                 value={serviceName}
@@ -299,7 +299,7 @@ export default function SalesPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Valor da Venda (R$) *
+                  Valor do Orçamento (R$) *
                 </label>
                 <input
                   type="number"
@@ -327,16 +327,16 @@ export default function SalesPage() {
             {/* Status */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Status da Venda
+                Status do Orçamento
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
-                <option value="fechado">Venda concluída</option>
+                <option value="fechado">Fechado (venda concluída)</option>
                 <option value="negociacao">Em Negociação</option>
-                <option value="proposta">Orçamento</option>
+                <option value="proposta">Orçamento enviado</option>
               </select>
             </div>
 
@@ -366,7 +366,7 @@ export default function SalesPage() {
                   fontWeight: 700
                 }}
               >
-                Salvar Venda
+                Salvar Orçamento
               </button>
             </div>
 

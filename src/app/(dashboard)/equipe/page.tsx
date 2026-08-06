@@ -163,7 +163,7 @@ export default function TeamPage() {
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{memberBookings.length}</div>
                 </div>
                 <div style={{ background: 'var(--surface-subtle)', padding: '12px', borderRadius: '12px' }}>
-                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Vendas</span>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Orçamentos</span>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--status-success)', marginTop: '4px' }}>
                     R$ {totalSalesValue >= 1000 ? `${(totalSalesValue/1000).toFixed(0)}k` : totalSalesValue}
                   </div>

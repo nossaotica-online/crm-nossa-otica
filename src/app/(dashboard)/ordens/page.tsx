@@ -316,7 +316,7 @@ export default function OrdensPage() {
     }
     const order = result.data as ServiceOrder;
 
-    // A O.S. já é a venda: mantém um registro em Vendas sincronizado com ela.
+    // A O.S. já é a venda: mantém um registro em Orçamentos sincronizado com ela.
     const saleStatus = saleStatusFor(order.status);
     const { error: saleError } = await supabase.from('sales').upsert({
       service_order_id: order.id,
@@ -337,7 +337,7 @@ export default function OrdensPage() {
       editingId ? 'Ordem atualizada.' : `O.S. #${order.os_number} criada`,
       !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
       saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
-      saleError ? `(aviso: não foi possível sincronizar com Vendas — ${saleError.message})` : null,
+      saleError ? `(aviso: não foi possível sincronizar com Orçamentos — ${saleError.message})` : null,
       labColumnMissing ? '(atenção: os dados do laboratório NÃO foram salvos — rode as migrations 026, 027 e 028 no Supabase.)' : null,
     ].filter(Boolean).join(' '));
     await loadData();
@@ -559,7 +559,7 @@ export default function OrdensPage() {
                 <label>Data de entrega<input type="date" value={form.delivery_date} onChange={(event) => setForm({ ...form, delivery_date: event.target.value })} /></label>
                 <label className={styles.fullField}>Observações<textarea rows={3} maxLength={5000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Detalhes do pedido, prazo, combinados com o cliente..." /></label>
               </div>
-              <p className={styles.helper} style={{ marginTop: 10 }}>Esta O.S. entra em <strong>Vendas</strong> automaticamente. Ela só conta como <strong>faturamento realizado</strong> quando o status for <strong>“Entregue”</strong> — antes disso fica como negociação. “Cancelada” cancela a venda.</p>
+              <p className={styles.helper} style={{ marginTop: 10 }}>Esta O.S. entra em <strong>Orçamentos</strong> automaticamente. Ela só conta como <strong>faturamento realizado</strong> quando o status for <strong>“Entregue”</strong> — antes disso fica como negociação. “Cancelada” cancela a venda.</p>
             </section>
 
             <div className={styles.modalFooter}><button type="button" className="btn btn-secondary" onClick={() => setFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Salvando...' : (editingId ? 'Atualizar O.S.' : 'Criar O.S.')}</button></div>

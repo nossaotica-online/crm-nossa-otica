@@ -42,7 +42,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Ordem de Serviço', href: '/ordens', icon: 'os' },
   { label: 'Calendário', href: '/calendario', icon: 'calendar' },
   { label: 'Equipe', href: '/equipe', icon: 'team' },
-  { label: 'Vendas', href: '/vendas', icon: 'sales' },
+  { label: 'Orçamentos', href: '/vendas', icon: 'sales' },
   { label: 'Metas', href: '/metas', icon: 'goals' },
   { label: 'Configurações', href: '/configuracoes', icon: 'settings' },
 ];
