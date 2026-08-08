@@ -9,6 +9,8 @@ import { Lead, LeadStatus, LeadOrigem } from '@/types';
 import Link from 'next/link';
 import { formatLocalDateISO, getTodayISO } from '@/lib/utils';
 
+const VALUES_VISIBLE_KEY = 'nossa-otica:valores-visiveis';
+
 export default function DashboardPage() {
   const { leads, clients, bookings, sales, goals, addLead, team } = useCRM();
   const router = useRouter();
@@ -21,14 +23,29 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
-  const [isSalesListOpen, setIsSalesListOpen] = useState(false);
 
   const [activeDayIndex, setActiveDayIndex] = useState(2); // Default to Wednesday
 
   const [isMounted, setIsMounted] = useState(false);
+  // Igual app de banco: o valor fica coberto por estrelas e o olho revela.
+  // A escolha fica guardada no navegador, então continua escondido na próxima vez.
+  const [valuesVisible, setValuesVisible] = useState(false);
   useEffect(() => {
     setIsMounted(true);
+    setValuesVisible(window.localStorage.getItem(VALUES_VISIBLE_KEY) === '1');
   }, []);
+
+  const toggleValues = () => {
+    setValuesVisible((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(VALUES_VISIBLE_KEY, next ? '1' : '0');
+      return next;
+    });
+  };
+
+  const money = (value: number) => (valuesVisible
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+    : 'R$ ★★★★');
 
   // Form State for new lead
   const [newLeadName, setNewLeadName] = useState('');
@@ -184,14 +201,6 @@ export default function DashboardPage() {
     ? todayPoints.reduce((acc, curr) => acc + curr.value, 0)
     : totalRevenue; // Total revenue of all time, or just weekly? Let's show all time for weekly to match old behavior.
 
-  // Orçamentos que formam o valor exibido no card (o "olho" abre exatamente esta lista)
-  const cardSales = (timeFilter === 'today' ? todaySales : sales.filter(s => s.status === 'fechado'))
-    .slice()
-    .sort((a, b) => {
-      const refA = a.data_fechamento || a.created_at || '';
-      const refB = b.data_fechamento || b.created_at || '';
-      return refB.localeCompare(refA);
-    });
 
   const chartPath = activePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
   const areaPath = `${chartPath} L ${activePoints[activePoints.length - 1].x},220 L ${activePoints[0].x},220 Z`;
@@ -432,9 +441,10 @@ export default function DashboardPage() {
               <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{timeFilter === 'week' ? 'Orçamentos Totais' : 'Orçamentos Hoje'}</span>
               <button
                 type="button"
-                onClick={() => setIsSalesListOpen(true)}
-                title="Ver os orçamentos deste valor"
-                aria-label="Ver os orçamentos deste valor"
+                onClick={toggleValues}
+                title={valuesVisible ? 'Esconder os valores' : 'Mostrar os valores'}
+                aria-label={valuesVisible ? 'Esconder os valores' : 'Mostrar os valores'}
+                aria-pressed={valuesVisible}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '28px', height: '28px', borderRadius: '50%',
@@ -443,14 +453,23 @@ export default function DashboardPage() {
                 }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
+                  {valuesVisible ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
                 </svg>
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', marginTop: '4px' }}>
-              <h2 style={{ fontSize: '32px', fontWeight: 800, margin: 0, letterSpacing: '-1px' }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayedValue)}
+              <h2 style={{ fontSize: '32px', fontWeight: 800, margin: 0, letterSpacing: valuesVisible ? '-1px' : '2px' }}>
+                {money(displayedValue)}
               </h2>
               {hasGrowthData && (
                 <span style={{
@@ -495,7 +514,7 @@ export default function DashboardPage() {
             }}>
               <div style={{ color: '#8e8e93', fontSize: '10px', fontWeight: 600 }}>{activePoint.day}, {activePoint.date}</div>
               <div style={{ fontWeight: 800, marginTop: '2px', fontSize: '14px', color: '#000000' }}>
-                R$ {activePoint.value.toLocaleString('pt-BR')}
+                {valuesVisible ? `R$ ${activePoint.value.toLocaleString('pt-BR')}` : 'R$ ★★★★'}
               </div>
               {/* Tooltip triangle */}
               <div style={{
@@ -820,134 +839,6 @@ export default function DashboardPage() {
         </div>
 
       </div>
-
-      {/* --- MODAL: Orçamentos do card (botão do olho) --- */}
-      {isSalesListOpen && (
-        <div
-          onClick={() => setIsSalesListOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.75)',
-            backdropFilter: 'blur(5px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px'
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--glass-border-strong)',
-              borderRadius: '20px',
-              width: '100%',
-              maxWidth: '640px',
-              maxHeight: '80vh',
-              padding: '32px',
-              boxShadow: 'var(--shadow-lg)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '11px', color: '#ead7b1', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px' }}>
-                  {timeFilter === 'week' ? 'Todo o período' : 'Hoje'}
-                </span>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
-                  Orçamentos fechados
-                </h3>
-                <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                  {cardSales.length} {cardSales.length === 1 ? 'orçamento' : 'orçamentos'} · total de{' '}
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayedValue)}
-                </span>
-              </div>
-              <button
-                onClick={() => setIsSalesListOpen(false)}
-                style={{ color: 'var(--text-muted)', fontSize: '20px', padding: '4px' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="table-scroll" style={{ overflowY: 'auto', flex: 1 }}>
-              <table className="table" style={{ fontSize: '13px' }}>
-                <thead>
-                  <tr>
-                    <th style={{ paddingLeft: 0 }}>Cliente</th>
-                    <th>Produto</th>
-                    <th>Data</th>
-                    <th style={{ textAlign: 'right', paddingRight: 0 }}>Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cardSales.map((sale) => {
-                    const client = clients.find((c) => c.id === sale.client_id);
-                    const ref = sale.data_fechamento || (sale.created_at ? sale.created_at.slice(0, 10) : null);
-                    return (
-                      <tr key={sale.id}>
-                        <td style={{ paddingLeft: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {client?.name || 'Cliente avulso'}
-                        </td>
-                        <td style={{ color: 'var(--text-secondary)' }}>{sale.servico_nome || '—'}</td>
-                        <td style={{ color: 'var(--text-secondary)' }}>
-                          {ref ? new Date(`${ref}T12:00:00`).toLocaleDateString('pt-BR') : '—'}
-                        </td>
-                        <td style={{ textAlign: 'right', paddingRight: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(sale.valor)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-
-                  {cardSales.length === 0 && (
-                    <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px 0' }}>
-                        Nenhum orçamento fechado {timeFilter === 'today' ? 'hoje' : 'ainda'}.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button
-                onClick={() => setIsSalesListOpen(false)}
-                style={{
-                  background: 'var(--surface-hover)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '100px',
-                  padding: '10px 20px',
-                  fontSize: '13px',
-                  fontWeight: 600
-                }}
-              >
-                Fechar
-              </button>
-              <Link
-                href="/vendas"
-                onClick={() => setIsSalesListOpen(false)}
-                style={{
-                  background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '100px',
-                  padding: '10px 20px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                Ver todos os orçamentos
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --- MODAL 1: Lead Details --- */}
       {selectedLead && (
