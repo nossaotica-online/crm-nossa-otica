@@ -42,6 +42,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Verify anonymous Supabase access is denied
         run: npm run security:test-anon
+      - name: Verify per-role route access
+        run: npm run security:test-permissions
       - name: Build with Next.js
         run: npm run build
       - name: Setup Pages

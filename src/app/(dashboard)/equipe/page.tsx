@@ -4,6 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 import { createClient } from '@/lib/supabase/client';
 
+// Explicação em português do que cada acesso permite, para a escolha não
+// depender de decorar o nome da função.
+const ROLE_HELP: Record<string, string> = {
+  funcionario: 'Cadastra O.S., atende qualquer cliente da ótica e cuida das tarefas. Não vê faturamento, metas, equipe nem o painel de início. Não exclui nada.',
+  vendedor: 'Vê apenas os clientes, orçamentos e tarefas que ele mesmo cadastrou.',
+  consultor: 'Mesmo alcance do vendedor: só os registros dele.',
+  gestor: 'Vê tudo da operação, inclusive faturamento e metas. Não mexe na equipe.',
+  admin: 'Acesso total, inclusive criar e desativar acessos.',
+};
+
 export default function TeamPage() {
   const { team, leads, bookings, sales, addTeamMember, toggleTeamMemberActive } = useCRM();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -22,7 +32,7 @@ export default function TeamPage() {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [cargo, setCargo] = useState('');
-  const [role, setRole] = useState('vendedor');
+  const [role, setRole] = useState('funcionario');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,7 +62,7 @@ export default function TeamPage() {
       setPassword('');
       setNome('');
       setCargo('');
-      setRole('vendedor');
+      setRole('funcionario');
     } else {
       setErrorMsg(result.error || 'Erro ao criar usuário');
     }
@@ -313,11 +323,15 @@ export default function TeamPage() {
                 onChange={(e) => setRole(e.target.value)}
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               >
-                <option value="vendedor">Vendedor (SDR/Closer)</option>
+                <option value="funcionario">Funcionário de balcão (O.S., Clientes e Tarefas)</option>
+                <option value="vendedor">Vendedor (só o que ele mesmo cadastrar)</option>
                 <option value="consultor">Consultor (Entrega)</option>
                 <option value="gestor">Gestor (Acesso Médio)</option>
                 <option value="admin">Administrador (Total)</option>
               </select>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {ROLE_HELP[role] || ''}
+              </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>

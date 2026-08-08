@@ -5,18 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import React, { useState, useEffect } from 'react';
 import { NAV_ITEMS } from '@/lib/constants';
+import { canAccessRoute, HOME_BY_ROLE } from '@/lib/permissions';
 import type { UserRole } from '@/types';
-
-const routeRoles: Record<string, UserRole[]> = {
-  '/equipe': ['admin'],
-  '/configuracoes': ['admin'],
-  '/metas': ['admin', 'gestor'],
-};
-
-const canAccessRoute = (pathname: string, role: UserRole | null) => {
-  const rule = Object.entries(routeRoles).find(([route]) => pathname.startsWith(route));
-  return !rule || Boolean(role && rule[1].includes(role));
-};
 
 // SVG Icons matching the mockup
 const getIcon = (iconName: string, active: boolean) => {
@@ -138,6 +128,16 @@ export default function DashboardLayout({
 
     checkAuth();
   }, [router]);
+
+  // Quem não pode ver o painel de início cai direto na tela de trabalho dele
+  // em vez de bater num aviso de "acesso não autorizado" logo após o login.
+  useEffect(() => {
+    if (!isAuthorized || !currentRole) return;
+    const fallback = HOME_BY_ROLE[currentRole];
+    if (fallback && !canAccessRoute(pathname, currentRole)) {
+      router.replace(fallback);
+    }
+  }, [isAuthorized, currentRole, pathname, router]);
 
   useEffect(() => {
     if (!isAuthorized) return;
@@ -464,7 +464,7 @@ export default function DashboardLayout({
           { label: 'Clientes', href: '/clientes', icon: 'leads' },
           { label: 'Agenda', href: '/calendario', icon: 'calendar' },
           { label: 'O.S.', href: '/ordens', icon: 'sales' },
-        ].map((item) => {
+        ].filter((item) => canAccessRoute(item.href, currentRole)).map((item) => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           return (
             <Link key={item.href} href={item.href} className={`bottom-nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>

@@ -4,7 +4,9 @@
 
 // ---- Database Row Types ----
 
-export type UserRole = 'admin' | 'gestor' | 'vendedor' | 'consultor';
+// 'funcionario' é o balcão: cadastra O.S., atende qualquer cliente da ótica
+// e cuida das tarefas — sem faturamento, metas, equipe nem painel de início.
+export type UserRole = 'admin' | 'gestor' | 'vendedor' | 'consultor' | 'funcionario';
 
 export interface Profile {
   id: string;
