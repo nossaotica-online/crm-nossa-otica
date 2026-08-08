@@ -32,7 +32,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 24 porque os testes de regra (scripts/test-*.mjs) importam os
+          # arquivos .ts direto — o Node só lê TypeScript a partir da 22.18.
+          node-version: 24
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -44,6 +46,8 @@ jobs:
         run: npm run security:test-anon
       - name: Verify per-role route access
         run: npm run security:test-permissions
+      - name: Verify O.S. keeps laboratory data
+        run: npm run test:os-laboratorio
       - name: Build with Next.js
         run: npm run build
       - name: Setup Pages

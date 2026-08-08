@@ -9,6 +9,7 @@ import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import { getTodayISO } from '@/lib/utils';
 import styles from '../clientes/clientes.module.css';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { writeDroppingMissingLabColumns, missingLabColumnsNotice } from '@/lib/lab-columns';
 
 const PRODUCT_OPTIONS = [
   'Óculos completo', 'Só as lentes', 'Só a armação', 'Óculos de sol', 'Lente de contato', 'Manutenção / conserto',
@@ -81,6 +82,7 @@ const intOrNull = (value: string) => {
   const parsed = numberOrNull(value);
   return parsed === null ? null : Math.round(parsed);
 };
+
 
 interface OrderForm {
   client_id: string;
@@ -323,19 +325,12 @@ export default function OrdensPage() {
       vendedor_id: vendedorId,
       status: form.status, delivery_date: form.delivery_date || null, notes: form.notes.trim() || null,
     };
-    const write = (body: typeof payload | Omit<typeof payload, 'laboratory' | 'lab_sent_date' | 'lab_due_date'>) => (editingId
+    const write = (body: Record<string, unknown>) => (editingId
       ? supabase.from('service_orders').update(body).eq('id', editingId).select().single()
       : supabase.from('service_orders').insert(body).select().single());
 
-    let result = await write(payload);
-    // Se as migrations 026/027 ainda não foram rodadas, as colunas do laboratório
-    // não existem. Grava a O.S. mesmo assim (sem elas) para não perder o pedido.
-    let labColumnMissing = false;
-    if (result.error && /laborator|lab_sent_date|lab_due_date/i.test(result.error.message) && /schema cache|does not exist|column/i.test(result.error.message)) {
-      const { laboratory: _laboratory, lab_sent_date: _labSentDate, lab_due_date: _labDueDate, ...withoutLab } = payload;
-      labColumnMissing = true;
-      result = await write(withoutLab);
-    }
+    // Grava tirando só as colunas do laboratório que o banco ainda não tem.
+    const { result, droppedColumns } = await writeDroppingMissingLabColumns(write, payload);
     if (result.error || !result.data) {
       setSaving(false);
       const msg = /row-level security|permission|jwt|401/i.test(result.error?.message || '')
@@ -367,7 +362,7 @@ export default function OrdensPage() {
       !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
       saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
       saleError ? `(aviso: não foi possível sincronizar com Orçamentos — ${saleError.message})` : null,
-      labColumnMissing ? '(atenção: os dados do laboratório NÃO foram salvos — rode as migrations 026, 027 e 028 no Supabase.)' : null,
+      missingLabColumnsNotice(droppedColumns) || null,
     ].filter(Boolean).join(' '));
     await loadData();
   };

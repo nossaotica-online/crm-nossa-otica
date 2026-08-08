@@ -3,19 +3,9 @@
 //
 // Uso: node scripts/test-permissions.mjs
 
-import { readFileSync } from 'node:fs';
-
-// O arquivo é TypeScript; aqui só interessam os dados e a função, então
-// as anotações de tipo são removidas antes de avaliar.
-const source = readFileSync('src/lib/permissions.ts', 'utf8')
-  .replace(/^import[^\n]*\n/gm, '')
-  .replace(/export const ROUTE_ROLES: [^=]+=/, 'const ROUTE_ROLES =')
-  .replace(/export const HOME_BY_ROLE: [^=]+=/, 'const HOME_BY_ROLE =')
-  .replace('export const canAccessRoute = (pathname: string, role: UserRole | null)', 'const canAccessRoute = (pathname, role)');
-
-const { canAccessRoute, HOME_BY_ROLE } = await import(
-  `data:text/javascript,${encodeURIComponent(`${source}\nexport { canAccessRoute, HOME_BY_ROLE };`)}`
-);
+// O Node lê o TypeScript direto, então o teste roda contra o arquivo de
+// verdade que o menu usa — não contra uma cópia.
+const { canAccessRoute, HOME_BY_ROLE } = await import('../src/lib/permissions.ts');
 
 // [rota, função, pode?]
 const CASES = [
