@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 import { createClient } from '@/lib/supabase/client';
+import { MIN_PASSWORD_LENGTH, validateNewTeamMember } from '@/lib/team-errors';
 
 // Explicação em português do que cada acesso permite, para a escolha não
 // depender de decorar o nome da função.
@@ -44,6 +45,11 @@ export default function TeamPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    // O que dá para conferir aqui não precisa de ida ao banco.
+    const problema = validateNewTeamMember({ password });
+    if (problema) return setErrorMsg(problema);
+
     setIsSubmitting(true);
 
     const result = await addTeamMember({
@@ -291,11 +297,17 @@ export default function TeamPage() {
               <input
                 type="password"
                 required
-                placeholder="Mínimo 6 caracteres"
+                minLength={MIN_PASSWORD_LENGTH}
+                placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
               />
+              <span style={{ fontSize: '11px', color: password.length > 0 && password.length < MIN_PASSWORD_LENGTH ? '#ef4444' : 'var(--text-muted)' }}>
+                {password.length > 0 && password.length < MIN_PASSWORD_LENGTH
+                  ? `Faltam ${MIN_PASSWORD_LENGTH - password.length} caracteres — o banco exige ${MIN_PASSWORD_LENGTH}.`
+                  : `O banco exige no mínimo ${MIN_PASSWORD_LENGTH} caracteres.`}
+              </span>
             </div>
 
             {/* Cargo */}

@@ -6,6 +6,7 @@ import { ClientRecord } from '@/types/clients';
 import { createClient } from '@/lib/supabase/client';
 import { getTodayISO } from '@/lib/utils';
 import { sanitizeOptionalText, sanitizePlainText } from '@/lib/security';
+import { teamMemberErrorMessage } from '@/lib/team-errors';
 
 interface CRMContextType {
   leads: Lead[];
@@ -282,12 +283,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (error) {
-        return {
-          success: false,
-          error: error.code === '42501'
-            ? 'Somente administradores ativos podem criar membros.'
-            : 'Não foi possível criar o membro da equipe.',
-        };
+        // O motivo real vem do banco (senha curta, migration faltando...).
+        return { success: false, error: teamMemberErrorMessage(error, memberData.role) };
       }
 
       if (data && data.success === false) {

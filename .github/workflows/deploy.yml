@@ -48,6 +48,8 @@ jobs:
         run: npm run security:test-permissions
       - name: Verify O.S. keeps laboratory data
         run: npm run test:os-laboratorio
+      - name: Verify team access errors are explicit
+        run: npm run test:equipe-erros
       - name: Build with Next.js
         run: npm run build
       - name: Setup Pages
