@@ -12,7 +12,7 @@ import { formatLocalDateISO, getTodayISO } from '@/lib/utils';
 const VALUES_VISIBLE_KEY = 'nossa-otica:valores-visiveis';
 
 export default function DashboardPage() {
-  const { leads, clients, bookings, sales, goals, addLead, team } = useCRM();
+  const { leads, clients, bookings, sales, goals, addLead, team, tasks, updateTaskStatus } = useCRM();
   const router = useRouter();
   const handleLogout = async () => {
     const supabase = createClient();
@@ -58,21 +58,7 @@ export default function DashboardPage() {
   const [newLeadResponsavelId, setNewLeadResponsavelId] = useState('');
 
   // Calculate dynamic stats
-  const totalLeads = leads.length;
-  const closedLeads = leads.filter(l => l.status === 'fechado');
   const totalRevenue = sales.filter(s => s.status === 'fechado').reduce((acc, curr) => acc + curr.valor, 0);
-
-  // Status counts mapped to Behance donut chart legend
-  const countSuccess = leads.filter(l => l.status === 'fechado').length;
-  const countWaiting = leads.filter(l => l.status === 'agendado').length;
-  const countCancel = leads.filter(l => l.status === 'perdido').length;
-  const countProcessing = leads.filter(l => ['novo', 'qualificado', 'em_reuniao', 'proposta'].includes(l.status)).length;
-
-  const maxCount = Math.max(countSuccess, countWaiting, countProcessing, countCancel, 1);
-  const hSuccess = (countSuccess / maxCount) * 160; // max height 160px
-  const hWaiting = (countWaiting / maxCount) * 160;
-  const hProcessing = (countProcessing / maxCount) * 160;
-  const hCancel = (countCancel / maxCount) * 160;
 
   // Calculate dynamic sales value for each origin
   const quizInstagramSales = sales
@@ -303,6 +289,22 @@ export default function DashboardPage() {
     })
     .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
     .slice(0, 5);
+
+  // Tarefas criadas no Calendário. Ocupam o lugar do funil de leads, que a
+  // ótica não usa — aquele quadro vivia zerado.
+  const pendingTasks = tasks.filter((t) => t.status === 'pendente');
+  const overdueTasks = pendingTasks.filter((t) => t.data < todayStr);
+  const todayTasks = pendingTasks.filter((t) => t.data === todayStr);
+  const upcomingTasks = pendingTasks.filter((t) => t.data > todayStr);
+  const doneTasks = tasks.filter((t) => t.status === 'concluida');
+  // As atrasadas vêm primeiro justamente por estarem atrasadas.
+  const nextTasks = [...pendingTasks].sort((a, b) => a.data.localeCompare(b.data)).slice(0, 6);
+
+  const taskDateLabel = (value: string) => {
+    if (value === todayStr) return 'Hoje';
+    const label = new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return value < todayStr ? `Atrasada · ${label}` : label;
+  };
 
   if (!isMounted) {
     return (
@@ -607,172 +609,101 @@ export default function DashboardPage() {
       {/* Bottom Grid: Donut Status + Recent leads */}
       <div className="mobile-stack-grid" style={{ display: 'grid', gridTemplateColumns: '520px 1fr', gap: '32px' }}>
 
-        {/* Left Column: Concentric Donut Status */}
+        {/* Left Column: Tarefas do calendário */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '28px', borderRadius: '24px', background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', padding: '32px', height: '100%' }}>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '10px', color: '#ead7b1', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px' }}>Nossa Ótica Analytics</span>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', letterSpacing: '-0.5px' }}>Status dos Clientes</h3>
+              <span style={{ fontSize: '10px', color: '#ead7b1', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px' }}>Nossa Ótica</span>
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px', letterSpacing: '-0.5px' }}>Tarefas</h3>
             </div>
-            <Link href="/leads" style={{ fontSize: '13px', color: '#ead7b1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              Detalhes
+            <Link href="/calendario" style={{ fontSize: '13px', color: '#ead7b1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Calendário
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </Link>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', padding: '10px 0', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1 }}>
 
-            {/* Legend grid - Premium Cards */}
+            {/* Contadores */}
             <div className="mobile-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-
-              <div style={{ background: 'var(--surface-subtle)', border: '1px solid var(--glass-border)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px', transition: 'all 0.2s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00e676' }}></div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Fechado</span>
+              {[
+                { label: 'Atrasadas', count: overdueTasks.length, color: '#ff1744' },
+                { label: 'Para hoje', count: todayTasks.length, color: '#ffb300' },
+                { label: 'Próximos dias', count: upcomingTasks.length, color: '#00e5ff' },
+                { label: 'Concluídas', count: doneTasks.length, color: '#00e676' },
+              ].map((item) => (
+                <div key={item.label} style={{ background: 'var(--surface-subtle)', border: '1px solid var(--glass-border)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color }}></div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>{item.label}</span>
+                  </div>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: item.count > 0 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                    {item.count}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '2px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{countSuccess}</span>
-                  <span style={{ fontSize: '12px', color: '#00e676', fontWeight: 700 }}>{Math.round((countSuccess / (totalLeads || 1)) * 100)}%</span>
-                </div>
-                {/* Horizontal Progress Bar */}
-                <div style={{ height: '4px', background: 'var(--surface-subtle)', borderRadius: '100px', marginTop: '6px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.round((countSuccess / (totalLeads || 1)) * 100)}%`, height: '100%', background: '#00e676', borderRadius: '100px' }}></div>
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--surface-subtle)', border: '1px solid var(--glass-border)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px', transition: 'all 0.2s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffb300' }}></div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Agendado</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '2px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{countWaiting}</span>
-                  <span style={{ fontSize: '12px', color: '#ffb300', fontWeight: 700 }}>{Math.round((countWaiting / (totalLeads || 1)) * 100)}%</span>
-                </div>
-                {/* Horizontal Progress Bar */}
-                <div style={{ height: '4px', background: 'var(--surface-subtle)', borderRadius: '100px', marginTop: '6px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.round((countWaiting / (totalLeads || 1)) * 100)}%`, height: '100%', background: '#ffb300', borderRadius: '100px' }}></div>
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--surface-subtle)', border: '1px solid var(--glass-border)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px', transition: 'all 0.2s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00e5ff' }}></div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Em Negoc.</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '2px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{countProcessing}</span>
-                  <span style={{ fontSize: '12px', color: '#00e5ff', fontWeight: 700 }}>{Math.round((countProcessing / (totalLeads || 1)) * 100)}%</span>
-                </div>
-                {/* Horizontal Progress Bar */}
-                <div style={{ height: '4px', background: 'var(--surface-subtle)', borderRadius: '100px', marginTop: '6px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.round((countProcessing / (totalLeads || 1)) * 100)}%`, height: '100%', background: '#00e5ff', borderRadius: '100px' }}></div>
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--surface-subtle)', border: '1px solid var(--glass-border)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px', transition: 'all 0.2s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff1744' }}></div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Perdido</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '2px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{countCancel}</span>
-                  <span style={{ fontSize: '12px', color: '#ff1744', fontWeight: 700 }}>{Math.round((countCancel / (totalLeads || 1)) * 100)}%</span>
-                </div>
-                {/* Horizontal Progress Bar */}
-                <div style={{ height: '4px', background: 'var(--surface-subtle)', borderRadius: '100px', marginTop: '6px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.round((countCancel / (totalLeads || 1)) * 100)}%`, height: '100%', background: '#ff1744', borderRadius: '100px' }}></div>
-                </div>
-              </div>
-
+              ))}
             </div>
 
-            {/* Gráfico de Colunas de Status dos Clientes */}
-            <div style={{ width: '100%', height: '220px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="100%" height="220" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet" style={{ overflow: 'visible' }}>
-                <defs>
-                  <linearGradient id="gradSuccess" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00e676" />
-                    <stop offset="100%" stopColor="#00b259" />
-                  </linearGradient>
-                  <linearGradient id="gradWaiting" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ffb300" />
-                    <stop offset="100%" stopColor="#cc8f00" />
-                  </linearGradient>
-                  <linearGradient id="gradProcessing" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00e5ff" />
-                    <stop offset="100%" stopColor="#00b5cc" />
-                  </linearGradient>
-                  <linearGradient id="gradCancel" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ff1744" />
-                    <stop offset="100%" stopColor="#cc1236" />
-                  </linearGradient>
-                </defs>
+            {/* Lista das próximas tarefas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+              {nextTasks.map((task) => {
+                const client = clients.find((c) => c.id === task.client_id);
+                const atrasada = task.data < todayStr;
+                return (
+                  <div
+                    key={task.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      background: 'var(--surface-subtle)', border: '1px solid var(--glass-border)',
+                      borderLeft: `3px solid ${atrasada ? '#ff1744' : task.data === todayStr ? '#ffb300' : 'var(--glass-border)'}`,
+                      borderRadius: '12px', padding: '12px 14px'
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => updateTaskStatus(task.id, 'concluida')}
+                      title="Marcar como concluída"
+                      aria-label={`Marcar "${task.titulo}" como concluída`}
+                      style={{
+                        flexShrink: 0, width: '20px', height: '20px', borderRadius: '6px',
+                        border: '1.5px solid var(--glass-border-strong)', background: 'transparent',
+                        cursor: 'pointer', padding: 0
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.titulo}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {client?.name || 'Sem cliente'}
+                      </div>
+                    </div>
+                    <span style={{
+                      flexShrink: 0, fontSize: '11px', fontWeight: 700,
+                      color: atrasada ? '#ff1744' : task.data === todayStr ? '#ffb300' : 'var(--text-secondary)'
+                    }}>
+                      {taskDateLabel(task.data)}
+                    </span>
+                  </div>
+                );
+              })}
 
-                {/* Horizontal reference lines */}
-                <line x1="0" y1="20" x2="400" y2="20" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="4,4" />
-                <line x1="0" y1="70" x2="400" y2="70" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="4,4" />
-                <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="4,4" />
-                <line x1="0" y1="170" x2="400" y2="170" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-
-                {/* Background bars for visual depth */}
-                <rect x="50" y="10" width="40" height="160" rx="8" fill="#00e676" opacity="0.04" />
-                <rect x="140" y="10" width="40" height="160" rx="8" fill="#ffb300" opacity="0.04" />
-                <rect x="230" y="10" width="40" height="160" rx="8" fill="#00e5ff" opacity="0.04" />
-                <rect x="320" y="10" width="40" height="160" rx="8" fill="#ff1744" opacity="0.04" />
-
-                {/* Bar 1: Fechado (Vibrant Green) */}
-                <rect x="50" y={170 - hSuccess} width="40" height={hSuccess} rx="8" fill="url(#gradSuccess)" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                {countSuccess > 0 && (
-                  <text x="70" y={162 - hSuccess} textAnchor="middle" fill="var(--text-primary)" style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'inherit' }}>
-                    {countSuccess}
-                  </text>
-                )}
-                <text x="70" y="195" textAnchor="middle" fill="var(--text-secondary)" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Fech
-                </text>
-
-                {/* Bar 2: Agendado (Vibrant Yellow/Amber) */}
-                <rect x="140" y={170 - hWaiting} width="40" height={hWaiting} rx="8" fill="url(#gradWaiting)" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                {countWaiting > 0 && (
-                  <text x="160" y={162 - hWaiting} textAnchor="middle" fill="var(--text-primary)" style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'inherit' }}>
-                    {countWaiting}
-                  </text>
-                )}
-                <text x="160" y="195" textAnchor="middle" fill="var(--text-secondary)" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Agend
-                </text>
-
-                {/* Bar 3: Em Negoc. (Vibrant Electric Gold/Cyan) */}
-                <rect x="230" y={170 - hProcessing} width="40" height={hProcessing} rx="8" fill="url(#gradProcessing)" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                {countProcessing > 0 && (
-                  <text x="250" y={162 - hProcessing} textAnchor="middle" fill="var(--text-primary)" style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'inherit' }}>
-                    {countProcessing}
-                  </text>
-                )}
-                <text x="250" y="195" textAnchor="middle" fill="var(--text-secondary)" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Negoc
-                </text>
-
-                {/* Bar 4: Perdido (Vibrant Red) */}
-                <rect x="320" y={170 - hCancel} width="40" height={hCancel} rx="8" fill="url(#gradCancel)" style={{ transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-                {countCancel > 0 && (
-                  <text x="340" y={162 - hCancel} textAnchor="middle" fill="var(--text-primary)" style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'inherit' }}>
-                    {countCancel}
-                  </text>
-                )}
-                <text x="340" y="195" textAnchor="middle" fill="var(--text-secondary)" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Perd
-                </text>
-              </svg>
+              {nextTasks.length === 0 && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center', padding: '24px 0' }}>
+                  <span style={{ fontSize: '22px' }}>✓</span>
+                  Nenhuma tarefa pendente.
+                  <Link href="/calendario" style={{ color: '#ead7b1', fontWeight: 700 }}>Criar no calendário</Link>
+                </div>
+              )}
             </div>
 
           </div>
 
         </div>
+
 
         {/* Right Column: Recent leads list */}
         <div className="glass-card" style={{
