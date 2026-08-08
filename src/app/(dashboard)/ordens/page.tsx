@@ -122,13 +122,19 @@ export default function OrdensPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const selectedOrder = orders.find((o) => o.id === viewId) || null;
+  // Espelho das vendas já geradas, por O.S. — é o que revela a ordem que
+  // ficou fora do faturamento porque a sincronização falhou lá atrás.
+  const [salesByOrder, setSalesByOrder] = useState<Record<string, { status: string; valor: number }>>({});
+  const [syncError, setSyncError] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
-    const [ordersRes, clientsRes, teamRes] = await Promise.all([
+    const [ordersRes, clientsRes, teamRes, salesRes] = await Promise.all([
       supabase.from('service_orders').select('*').order('created_at', { ascending: false }),
       supabase.from('clients').select('*').eq('status', 'active').order('name'),
       supabase.from('profiles').select('*'),
+      supabase.from('sales').select('service_order_id, status, valor').not('service_order_id', 'is', null),
     ]);
     const err = ordersRes.error || clientsRes.error;
     if (err) {
@@ -140,8 +146,29 @@ export default function OrdensPage() {
       setClients((clientsRes.data || []) as ClientRecord[]);
       setTeam((teamRes.data || []) as Profile[]);
     }
+    if (salesRes.error) {
+      setSalesByOrder({});
+      setSyncError(/service_order_id/.test(salesRes.error.message)
+        ? 'O vínculo entre Ordem de Serviço e Orçamentos ainda não existe no banco — por isso nenhuma O.S. entra no faturamento. Rode a migration 024 no Supabase.'
+        : `Não foi possível conferir os orçamentos das ordens: ${salesRes.error.message}`);
+    } else {
+      setSyncError('');
+      const map: Record<string, { status: string; valor: number }> = {};
+      for (const row of (salesRes.data || []) as { service_order_id: string; status: string; valor: number }[]) {
+        map[row.service_order_id] = { status: row.status, valor: Number(row.valor) };
+      }
+      setSalesByOrder(map);
+    }
     setLoading(false);
   };
+
+  // Uma venda por O.S., com o mesmo status e o mesmo valor. O que fugir disso
+  // (ou nem existir) está fora do painel e precisa ser regravado.
+  const outOfSync = useMemo(() => orders.filter((order) => {
+    const sale = salesByOrder[order.id];
+    if (!sale) return true;
+    return sale.status !== saleStatusFor(order.status) || sale.valor !== Number(order.total || 0);
+  }), [orders, salesByOrder]);
 
   useEffect(() => { void loadData(); }, []);
 
@@ -347,10 +374,61 @@ export default function OrdensPage() {
     const { error: err } = await supabase.from('service_orders').update({ status }).eq('id', order.id);
     if (err) return setError(`Não foi possível mudar o status: ${err.message}`);
     const saleStatus = saleStatusFor(status);
-    await supabase.from('sales')
-      .update({ status: saleStatus, data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || getTodayISO()) : null })
-      .eq('service_order_id', order.id);
-    setNotice(`O.S. #${order.os_number} → ${statusInfo(status).label}.`);
+    // Upsert (e não update): O.S. que ainda não tem linha em Orçamentos — criada
+    // antes da migration 024, ou cuja sincronização falhou — não entrava no
+    // faturamento nunca, porque o update não achava nenhuma linha e não dava erro.
+    const { error: saleError } = await supabase.from('sales').upsert({
+      service_order_id: order.id,
+      client_id: order.client_id,
+      vendedor_id: order.vendedor_id || currentUserId || null,
+      servico_id: null,
+      servico_nome: order.product_type || 'Óculos completos',
+      valor: order.total || 0,
+      parcelas: 1,
+      status: saleStatus,
+      data_fechamento: saleStatus === 'fechado' ? (order.delivery_date || getTodayISO()) : null,
+      notas: `Gerado automaticamente pela O.S. #${order.os_number}.`,
+    }, { onConflict: 'service_order_id' });
+    setNotice([
+      `O.S. #${order.os_number} → ${statusInfo(status).label}.`,
+      saleStatus === 'fechado' ? 'Lançada no faturamento do painel.' : null,
+      saleError ? `(aviso: não foi possível sincronizar com Orçamentos — ${saleError.message})` : null,
+    ].filter(Boolean).join(' '));
+    await loadData();
+  };
+
+  // Regrava em Orçamentos todas as O.S. que ficaram de fora — inclusive as
+  // antigas, que foram criadas antes de a O.S. passar a gerar venda.
+  const syncOrders = async () => {
+    setSyncing(true);
+    setError('');
+    const rows = outOfSync.map((order) => {
+      const saleStatus = saleStatusFor(order.status);
+      return {
+        service_order_id: order.id,
+        client_id: order.client_id,
+        vendedor_id: order.vendedor_id || currentUserId || null,
+        servico_id: null,
+        servico_nome: order.product_type || 'Óculos completos',
+        valor: order.total || 0,
+        parcelas: 1,
+        status: saleStatus,
+        // Entrega antiga: usa a data de entrega dela, não a de hoje, senão o
+        // faturamento apareceria todo no dia em que você clicou no botão.
+        data_fechamento: saleStatus === 'fechado'
+          ? (order.delivery_date || order.created_at?.slice(0, 10) || getTodayISO())
+          : null,
+        notas: `Gerado automaticamente pela O.S. #${order.os_number}.`,
+      };
+    });
+    const { error: err } = await supabase.from('sales').upsert(rows, { onConflict: 'service_order_id' });
+    setSyncing(false);
+    if (err) {
+      return setError(/row-level security|permission|jwt|401/i.test(err.message)
+        ? 'Não foi possível sincronizar: você precisa estar logada (e com permissão) para gravar em Orçamentos.'
+        : `Não foi possível sincronizar: ${err.message}`);
+    }
+    setNotice(`${rows.length} ${rows.length === 1 ? 'ordem sincronizada' : 'ordens sincronizadas'} com Orçamentos. As entregues já estão no faturamento do painel.`);
     await loadData();
   };
 
@@ -388,6 +466,27 @@ export default function OrdensPage() {
 
       {error && <div className={styles.errorBanner}>{error}<button onClick={() => setError('')}>×</button></div>}
       {notice && <div className={styles.noticeBanner}>{notice}<button onClick={() => setNotice('')}>×</button></div>}
+      {syncError && <div className={styles.errorBanner}>{syncError}</div>}
+
+      {!loading && !syncError && outOfSync.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+          padding: '13px 16px', borderRadius: 10, fontSize: 13,
+          color: '#fde68a', border: '1px solid rgba(245,158,11,.28)', background: 'rgba(245,158,11,.1)',
+        }}>
+          <span>
+            <strong>{outOfSync.length} {outOfSync.length === 1 ? 'ordem está' : 'ordens estão'} fora de Orçamentos</strong> — não {outOfSync.length === 1 ? 'aparece' : 'aparecem'} no painel nem no faturamento, mesmo se já {outOfSync.length === 1 ? 'estiver entregue' : 'estiverem entregues'}.
+          </span>
+          <button
+            className="btn btn-primary"
+            onClick={() => void syncOrders()}
+            disabled={syncing}
+            style={{ flexShrink: 0, padding: '8px 16px', fontSize: 12, fontWeight: 800 }}
+          >
+            {syncing ? 'Sincronizando...' : 'Sincronizar agora'}
+          </button>
+        </div>
+      )}
 
       <section className={styles.toolbar}>
         <div className={styles.searchBox}>
