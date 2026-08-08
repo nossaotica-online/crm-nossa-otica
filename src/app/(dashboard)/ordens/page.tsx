@@ -8,6 +8,7 @@ import type { Profile } from '@/types';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import { getTodayISO } from '@/lib/utils';
 import styles from '../clientes/clientes.module.css';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const PRODUCT_OPTIONS = [
   'Óculos completo', 'Só as lentes', 'Só a armação', 'Óculos de sol', 'Lente de contato', 'Manutenção / conserto',
@@ -105,6 +106,7 @@ const EMPTY_FORM: OrderForm = {
 
 export default function OrdensPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { confirm, confirmDialog } = useConfirm();
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [team, setTeam] = useState<Profile[]>([]);
@@ -433,7 +435,12 @@ export default function OrdensPage() {
   };
 
   const removeOrder = async (order: ServiceOrder) => {
-    if (!window.confirm(`Excluir a Ordem de Serviço #${order.os_number} de ${order.client_name}?`)) return;
+    const confirmed = await confirm({
+      title: 'Excluir esta O.S.?',
+      message: `A Ordem de Serviço #${order.os_number} de ${order.client_name} será apagada para sempre. Essa ação não tem volta.`,
+      confirmLabel: 'Sim, excluir O.S.',
+    });
+    if (!confirmed) return;
     const { error: err } = await supabase.from('service_orders').delete().eq('id', order.id);
     if (err) return setError(`Não foi possível excluir: ${err.message}`);
     setNotice('Ordem de serviço excluída.');
@@ -738,6 +745,8 @@ export default function OrdensPage() {
           </div>
         );
       })()}
+
+      {confirmDialog}
     </div>
   );
 }

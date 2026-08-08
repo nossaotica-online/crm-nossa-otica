@@ -16,6 +16,7 @@ import type {
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import { getTodayISO } from '@/lib/utils';
 import styles from './clientes.module.css';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 const PAGE_SIZE = 10;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -172,6 +173,7 @@ function ClientPicker({ clients, excludeIds, value, onSelect, placeholder }: {
 
 export default function ClientesPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { confirm, confirmDialog } = useConfirm();
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [relationships, setRelationships] = useState<FamilyRelationship[]>([]);
@@ -400,7 +402,19 @@ export default function ClientesPage() {
 
   const setArchiveStatus = async (client: ClientRecord) => {
     const nextStatus = client.status === 'active' ? 'archived' : 'active';
-    if (!window.confirm(`${nextStatus === 'archived' ? 'Arquivar' : 'Reativar'} ${client.name}?`)) return;
+    const confirmed = await confirm(nextStatus === 'archived'
+      ? {
+        title: `Arquivar ${client.name}?`,
+        message: 'O cliente sai da lista ativa, mas nada é apagado — dá para reativar quando quiser.',
+        confirmLabel: 'Sim, arquivar',
+      }
+      : {
+        title: `Reativar ${client.name}?`,
+        message: 'O cliente volta para a lista de ativos.',
+        confirmLabel: 'Sim, reativar',
+        tone: 'neutral' as const,
+      });
+    if (!confirmed) return;
     const { error: updateError } = await supabase.from('clients').update({ status: nextStatus }).eq('id', client.id);
     if (updateError) return setError(`Não foi possível alterar o status: ${updateError.message}`);
     if (nextStatus === 'archived') setViewClientId(null);
@@ -409,7 +423,12 @@ export default function ClientesPage() {
   };
 
   const deleteClient = async (client: ClientRecord) => {
-    if (!window.confirm(`Excluir permanentemente ${client.name}? Os vínculos serão removidos, mas os familiares não serão excluídos.`)) return;
+    const confirmed = await confirm({
+      title: `Excluir ${client.name}?`,
+      message: 'O cliente será apagado para sempre, junto com as receitas dele. Os vínculos de família saem, mas os familiares continuam cadastrados.\n\nSe quiser apenas tirar da lista sem perder nada, use Arquivar.',
+      confirmLabel: 'Sim, excluir cliente',
+    });
+    if (!confirmed) return;
     const { error: deleteError } = await supabase.from('clients').delete().eq('id', client.id);
     if (deleteError) return setError(`Não foi possível excluir: ${deleteError.message}`);
     setViewClientId(null);
@@ -432,7 +451,13 @@ export default function ClientesPage() {
   };
 
   const removeRelationship = async (relatedClientId: string) => {
-    if (!selectedClient || !window.confirm('Remover apenas este vínculo familiar?')) return;
+    if (!selectedClient) return;
+    const confirmed = await confirm({
+      title: 'Remover este vínculo de família?',
+      message: 'Só o vínculo entre os dois perfis é desfeito. Nenhum cliente é excluído.',
+      confirmLabel: 'Sim, remover vínculo',
+    });
+    if (!confirmed) return;
     const { error: relationError } = await supabase.rpc('remove_family_relationship', {
       p_client_id: selectedClient.id,
       p_related_client_id: relatedClientId,
@@ -513,7 +538,12 @@ export default function ClientesPage() {
   };
 
   const deletePrescription = async (prescription: ClientPrescription) => {
-    if (!window.confirm(`Excluir a receita de ${formatDate(prescription.prescription_date)}?`)) return;
+    const confirmed = await confirm({
+      title: 'Excluir esta receita?',
+      message: `A receita de ${formatDate(prescription.prescription_date)} sai do histórico do cliente e não dá para recuperar.`,
+      confirmLabel: 'Sim, excluir receita',
+    });
+    if (!confirmed) return;
     const { error: prescriptionError } = await supabase.from('client_prescriptions').delete().eq('id', prescription.id);
     if (prescriptionError) return setError(`Não foi possível excluir a receita: ${prescriptionError.message}`);
     setNotice('Receita excluída.');
@@ -791,6 +821,8 @@ export default function ClientesPage() {
           </form>
         </div>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

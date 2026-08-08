@@ -6,6 +6,7 @@ import { WEEKDAY_SHORT, MONTH_LABELS } from '@/lib/constants';
 import { Booking, BookingStatus, BookingTipo, Task } from '@/types';
 import { safeMeetingUrl } from '@/lib/security';
 import { getTodayISO } from '@/lib/utils';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 // Tarefas do dia a dia da ótica (antes eram de agência: proposta comercial,
 // material de reunião...). O valor é o título que fica salvo na tarefa.
@@ -32,6 +33,7 @@ const formatPhone = (value?: string | null) => {
 
 export default function CalendarPage() {
   const { bookings, clients, team, addBooking, updateBookingStatus, deleteBooking, tasks, addTask, updateTaskStatus, deleteTask } = useCRM();
+  const { confirm, confirmDialog } = useConfirm();
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
@@ -643,7 +645,12 @@ export default function CalendarPage() {
                           type="button"
                           onClick={async (e) => {
                             e.stopPropagation();
-                            if (confirm('Deseja excluir esta tarefa?')) {
+                            const confirmed = await confirm({
+                              title: 'Excluir esta tarefa?',
+                              message: `"${task.titulo}" será apagada da agenda e não dá para recuperar.`,
+                              confirmLabel: 'Sim, excluir tarefa',
+                            });
+                            if (confirmed) {
                               await deleteTask(task.id);
                             }
                           }}
@@ -1120,13 +1127,17 @@ export default function CalendarPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (confirm('Tem certeza que deseja EXCLUIR este agendamento permanentemente?')) {
-                      const ok = await deleteBooking(selectedBooking.id);
-                      if (ok) {
-                        setSelectedBooking(null);
-                      } else {
-                        alert('Não foi possível excluir este agendamento.\n\nA exclusão é permitida apenas para usuários administradores logados. Faça login como administrador (não use o modo de desenvolvimento sem sessão) e tente novamente.');
-                      }
+                    const confirmed = await confirm({
+                      title: 'Excluir este agendamento?',
+                      message: 'O agendamento será apagado para sempre da agenda. Essa ação não tem volta.',
+                      confirmLabel: 'Sim, excluir agendamento',
+                    });
+                    if (!confirmed) return;
+                    const ok = await deleteBooking(selectedBooking.id);
+                    if (ok) {
+                      setSelectedBooking(null);
+                    } else {
+                      alert('Não foi possível excluir este agendamento.\n\nA exclusão é permitida apenas para usuários administradores logados. Faça login como administrador (não use o modo de desenvolvimento sem sessão) e tente novamente.');
                     }
                   }}
                   style={{
@@ -1166,6 +1177,7 @@ export default function CalendarPage() {
         );
       })()}
 
+      {confirmDialog}
     </div>
   );
 }

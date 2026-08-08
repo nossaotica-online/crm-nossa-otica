@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 import { Goal, GoalTipo, GoalPeriodo } from '@/types';
 import { formatLocalDateISO } from '@/lib/utils';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 export default function GoalsPage() {
   const { goals, addGoal, updateGoalProgress, updateGoalTarget, deleteGoal } = useCRM();
+  const { confirm, confirmDialog } = useConfirm();
 
   // Modal State for new goal
   const [isNewGoalModalOpen, setIsNewGoalModalOpen] = useState(false);
@@ -58,10 +60,14 @@ export default function GoalsPage() {
     setEditType(null);
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    if (confirm('Tem certeza que deseja excluir esta meta?')) {
-      deleteGoal(goalId);
-    }
+  const handleDeleteGoal = async (goalId: string) => {
+    const confirmed = await confirm({
+      title: 'Excluir esta meta?',
+      message: 'A meta sai do painel e o histórico dela não pode ser recuperado.',
+      confirmLabel: 'Sim, excluir meta',
+    });
+    if (!confirmed) return;
+    deleteGoal(goalId);
   };
 
   if (!isMounted) {
@@ -181,7 +187,7 @@ export default function GoalsPage() {
               >
                 {/* Delete Goal Button */}
                 <button
-                  onClick={() => handleDeleteGoal(goal.id)}
+                  onClick={() => void handleDeleteGoal(goal.id)}
                   style={{
                     position: 'absolute',
                     top: '20px',
@@ -527,6 +533,7 @@ export default function GoalsPage() {
         </div>
       )}
 
+      {confirmDialog}
     </div>
   );
 }
