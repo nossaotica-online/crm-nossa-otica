@@ -7,6 +7,22 @@ import { Booking, BookingStatus, BookingTipo, Task } from '@/types';
 import { safeMeetingUrl } from '@/lib/security';
 import { getTodayISO } from '@/lib/utils';
 
+// Tarefas do dia a dia da ótica (antes eram de agência: proposta comercial,
+// material de reunião...). O valor é o título que fica salvo na tarefa.
+const TASK_OPTIONS = [
+  { value: 'Avisar que o óculos chegou', label: 'Avisar que o óculos chegou (WhatsApp)' },
+  { value: 'Ligar para o cliente', label: 'Ligar para o cliente' },
+  { value: 'Cobrar o laboratório', label: 'Cobrar o laboratório (pedido atrasado)' },
+  { value: 'Cobrar saldo em aberto', label: 'Cobrar saldo em aberto' },
+  { value: 'Entregar o óculos', label: 'Entregar o óculos ao cliente' },
+  { value: 'Ajuste / manutenção', label: 'Ajuste / manutenção do óculos' },
+  { value: 'Retorno de adaptação', label: 'Retorno de adaptação (multifocal / lente de contato)' },
+  { value: 'Lembrar de revisar o grau', label: 'Lembrar de revisar o grau (revisão anual)' },
+  { value: 'Outro', label: 'Outro (Digitar personalizado...)' },
+];
+
+const DEFAULT_TASK_TITLE = TASK_OPTIONS[0].value;
+
 const formatPhone = (value?: string | null) => {
   const digits = (value || '').replace(/\D/g, '');
   if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
@@ -42,7 +58,7 @@ export default function CalendarPage() {
   // New Task Form State
   const [newTaskClientId, setNewTaskClientId] = useState('');
   const [newTaskResponsavelId, setNewTaskResponsavelId] = useState('');
-  const [newTaskTitle, setNewTaskTitle] = useState('WhatsApp');
+  const [newTaskTitle, setNewTaskTitle] = useState(DEFAULT_TASK_TITLE);
   const [newTaskCustomTitle, setNewTaskCustomTitle] = useState('');
   const [newTaskDate, setNewTaskDate] = useState(getTodayISO());
   const [newTaskDescription, setNewTaskDescription] = useState('');
@@ -131,7 +147,7 @@ export default function CalendarPage() {
     // Reset and Close
     setNewTaskClientId('');
     setNewTaskResponsavelId('');
-    setNewTaskTitle('WhatsApp');
+    setNewTaskTitle(DEFAULT_TASK_TITLE);
     setNewTaskCustomTitle('');
     setNewTaskDescription('');
     setIsNewTaskModalOpen(false);
@@ -948,12 +964,9 @@ export default function CalendarPage() {
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
                 >
-                  <option value="WhatsApp">WhatsApp (Falar com Cliente)</option>
-                  <option value="Ligar">Ligar para o Cliente</option>
-                  <option value="Enviar Proposta">Enviar Proposta Comercial</option>
-                  <option value="Acompanhar">Acompanhar / Follow-up</option>
-                  <option value="Preparar Reunião">Preparar Material para Reunião</option>
-                  <option value="Outro">Outro (Digitar personalizado...)</option>
+                  {TASK_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
 
                 {newTaskTitle === 'Outro' && (
