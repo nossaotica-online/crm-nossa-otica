@@ -1,6 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { CRMProvider } from '@/context/CRMContext';
+
+// Baixada no build e servida pelo próprio site. Pelo Google Fonts a política
+// de segurança bloqueava, e a fonte nunca chegava no navegador.
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -53,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={inter.variable}>
       <head>
         <meta httpEquiv="Content-Security-Policy" content={contentSecurityPolicy} />
         <meta name="referrer" content="strict-origin-when-cross-origin" />

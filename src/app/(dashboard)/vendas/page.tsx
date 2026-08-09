@@ -134,7 +134,9 @@ export default function SalesPage() {
 
       {/* Sales List Table */}
       <div className="glass-card" style={{ borderRadius: '24px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Orçamentos fechados</h3>
+        {/* A tabela sempre listou todos, com a coluna Status distinguindo —
+            o título dizia "fechados" e não batia com o que aparecia embaixo. */}
+        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>Todos os orçamentos</h3>
 
         <div className="table-scroll">
         <table className="table" style={{ fontSize: '13.5px' }}>

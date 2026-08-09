@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
 import { createClient } from '@/lib/supabase/client';
 import { MIN_PASSWORD_LENGTH, validateNewTeamMember } from '@/lib/team-errors';
+import { useConfirm } from '@/components/ConfirmDialog';
+import type { Profile } from '@/types';
 
 // Explicação em português do que cada acesso permite, para a escolha não
 // depender de decorar o nome da função.
@@ -16,7 +18,7 @@ const ROLE_HELP: Record<string, string> = {
 };
 
 export default function TeamPage() {
-  const { team, leads, bookings, sales, addTeamMember, toggleTeamMemberActive } = useCRM();
+  const { team, clients, bookings, sales, addTeamMember, toggleTeamMemberActive } = useCRM();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,6 +38,36 @@ export default function TeamPage() {
   const [role, setRole] = useState('funcionario');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aviso, setAviso] = useState('');
+  const { confirm, confirmDialog } = useConfirm();
+
+  // Desativar acesso é irreversível na prática: se cair o último admin ativo,
+  // ninguém mais entra para reativar — nem pelo app, nem pelo próprio CRM.
+  const adminsAtivos = team.filter((membro) => membro.role === 'admin' && membro.ativo);
+
+  const handleToggleActive = async (member: Profile) => {
+    setAviso('');
+    if (member.ativo && member.role === 'admin' && adminsAtivos.length <= 1) {
+      setAviso(`${member.nome} é a única administradora ativa. Desativar esse acesso trancaria todo mundo para fora do sistema. Crie outra administradora antes.`);
+      return;
+    }
+
+    const confirmado = await confirm(member.ativo
+      ? {
+        title: `Desativar o acesso de ${member.nome}?`,
+        message: 'A pessoa não consegue mais entrar no sistema, mas nada do que ela cadastrou é apagado. Dá para reativar depois.',
+        confirmLabel: 'Sim, desativar',
+      }
+      : {
+        title: `Reativar o acesso de ${member.nome}?`,
+        message: 'A pessoa volta a entrar no sistema com a mesma senha de antes.',
+        confirmLabel: 'Sim, reativar',
+        tone: 'neutral' as const,
+      });
+    if (!confirmado) return;
+
+    await toggleTeamMemberActive(member.id, member.ativo);
+  };
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -103,11 +135,18 @@ export default function TeamPage() {
         </button>
       </div>
 
+      {aviso && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '12px', padding: '14px 16px', color: '#ef4444', fontSize: '13px', fontWeight: 600, lineHeight: 1.5 }}>
+          {aviso}
+        </div>
+      )}
+
       {/* Team Cards Grid */}
       <div className="mobile-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
         {team.map((member) => {
-          // Calculate specific member stats
-          const memberLeads = leads.filter(l => l.responsavel_id === member.id);
+          // O contador de "Clientes" lia a tabela antiga de leads, que a ótica
+          // não usa mais — ficava sempre em 0. Agora conta os clientes de verdade.
+          const memberClients = clients.filter(c => c.responsavel_id === member.id);
           const memberBookings = bookings.filter(b => b.consultor_id === member.id);
           const memberSales = sales.filter(s => s.vendedor_id === member.id && s.status === 'fechado');
           const totalSalesValue = memberSales.reduce((sum, s) => sum + s.valor, 0);
@@ -172,7 +211,7 @@ export default function TeamPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
                 <div style={{ background: 'var(--surface-subtle)', padding: '12px', borderRadius: '12px' }}>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Clientes</span>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{memberLeads.length}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{memberClients.length}</div>
                 </div>
                 <div style={{ background: 'var(--surface-subtle)', padding: '12px', borderRadius: '12px' }}>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 600 }}>Agenda</span>
@@ -187,10 +226,13 @@ export default function TeamPage() {
               </div>
 
               {/* Actions */}
-              {member.id !== currentUserId && (
+              {/* Enquanto não se sabe quem está logada, nenhum botão aparece:
+                  antes, quando a sessão caía, o "Desativar Acesso" surgia no
+                  cartão da própria dona — um clique e ninguém mais entrava. */}
+              {currentUserId !== null && member.id !== currentUserId && (
                 <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '10px' }}>
                   <button
-                    onClick={() => toggleTeamMemberActive(member.id, member.ativo)}
+                    onClick={() => void handleToggleActive(member)}
                     style={{
                       flex: 1,
                       padding: '10px 14px',
@@ -386,6 +428,7 @@ export default function TeamPage() {
         </div>
       )}
 
+      {confirmDialog}
     </div>
   );
 }

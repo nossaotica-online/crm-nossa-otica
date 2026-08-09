@@ -31,6 +31,9 @@ export interface ClientRecord {
   source_details: string | null;
   product_interests: OpticalProduct[];
   status: ClientStatus;
+  // Quem cadastrou/atende. Existe no banco desde a migration 025 e é o que
+  // limita o que vendedor e consultor enxergam.
+  responsavel_id: string | null;
   created_at: string;
   updated_at: string;
 }

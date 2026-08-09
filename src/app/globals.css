@@ -4,7 +4,11 @@
    Baseado na referência visual fornecida (UX Premium)
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* A Inter vem pelo next/font (ver src/app/layout.tsx): o Next baixa os arquivos
+   no build e o site serve do próprio domínio. O @import do Google Fonts que
+   ficava aqui era bloqueado pela política de segurança da página
+   ("style-src 'self'"), então a fonte nunca carregava de verdade — o app caía
+   na fonte do sistema e ficava diferente entre Mac e Windows. */
 
 :root {
   /* ---- Colors: 60% Black (Backgrounds) ---- */
@@ -44,7 +48,7 @@
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.8);
 
   /* ---- Layout & Spacing ---- */
-  --font-family: 'Inter', sans-serif;
+  --font-family: var(--font-inter), 'Inter', sans-serif;
   --sidebar-width: 250px;
   --header-height: 70px;
   

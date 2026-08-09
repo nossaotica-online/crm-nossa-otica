@@ -115,10 +115,25 @@ export default function DashboardLayout({
           .eq('id', session.user.id)
           .single();
 
-        if (error || (profile && !profile.ativo)) {
-          console.warn('Usuário inativo ou sem perfil. Deslogando...');
+        // Antes qualquer erro aqui deslogava — inclusive um tropeço de rede,
+        // que tirava a dona do sistema no meio do trabalho. Agora só desloga
+        // quando o acesso foi mesmo revogado (perfil sumiu ou está inativo)
+        // ou quando a sessão morreu de vez.
+        const perfilRevogado = error?.code === 'PGRST116' || (profile && !profile.ativo);
+        const sessaoMorta = error?.code === 'PGRST301'
+          || /jwt|token/i.test(error?.message || '');
+
+        if (perfilRevogado) {
+          console.warn('Perfil inativo ou inexistente. Deslogando...');
           await supabase.auth.signOut();
           router.push('/login');
+        } else if (sessaoMorta) {
+          router.push('/login');
+        } else if (error) {
+          // Falha passageira: mantém a tela em pé. O banco continua barrando
+          // o que não for permitido, então nada escapa por causa disso.
+          console.warn('Não foi possível conferir o perfil agora:', error.message);
+          setIsAuthorized(true);
         } else {
           setCurrentRole(profile.role as UserRole);
           setIsAuthorized(true);
@@ -127,6 +142,21 @@ export default function DashboardLayout({
     };
 
     checkAuth();
+  }, [router]);
+
+  // A sessão pode morrer com a tela aberta (token que não renova, acesso
+  // revogado, logout em outra aba). Antes o CRM continuava mostrando tudo como
+  // se estivesse logada e cada botão de salvar falhava calado. Agora o próprio
+  // Supabase avisa e a tela vai para o login na hora.
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
+        setIsAuthorized(false);
+        router.replace('/login');
+      }
+    });
+    return () => subscription.unsubscribe();
   }, [router]);
 
   // Quem não pode ver o painel de início cai direto na tela de trabalho dele
