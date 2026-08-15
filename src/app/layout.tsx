@@ -22,7 +22,14 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   // Next.js exporta scripts de hidratação inline. GitHub Pages não permite
   // nonce dinâmico/headers, então unsafe-inline é a limitação deste host.
-  "script-src 'self' 'unsafe-inline'",
+  //
+  // 'unsafe-eval' entra SÓ no `npm run dev`: em desenvolvimento o React usa
+  // eval() para remontar o rastro do erro, e sem isso o overlay do Next fica
+  // acusando um problema que não existe. O site publicado é gerado com
+  // NODE_ENV=production e continua sem eval nenhum.
+  `script-src 'self' 'unsafe-inline'${
+    process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"
+  }`,
   // O projeto ainda usa muitos estilos React inline.
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co",

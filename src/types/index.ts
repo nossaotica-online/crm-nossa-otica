@@ -15,6 +15,9 @@ export interface Profile {
   telefone: string | null;
   cargo: string | null;
   role: UserRole;
+  permissoes?: string[];
+  pode_excluir?: boolean;
+  ve_tudo?: boolean;
   avatar_url: string | null;
   ativo: boolean;
   created_at: string;

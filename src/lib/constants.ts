@@ -1,38 +1,4 @@
-import { type LeadStatus, type LeadOrigem, type NavItem } from '@/types';
-
-// ---- Lead Status Configuration ----
-
-export const LEAD_STATUS_CONFIG: Record<
-  LeadStatus,
-  { label: string; color: string; bgColor: string }
-> = {
-  novo: { label: 'Novo cliente', color: '#94a3b8', bgColor: 'rgba(148, 163, 184, 0.14)' },
-  qualificado: { label: 'Contato feito', color: '#38bdf8', bgColor: 'rgba(56, 189, 248, 0.14)' },
-  agendado: { label: 'Exame agendado', color: '#a78bfa', bgColor: 'rgba(167, 139, 250, 0.14)' },
-  em_reuniao: { label: 'Atendimento', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.14)' },
-  proposta: { label: 'Orçamento', color: '#eab308', bgColor: 'rgba(234, 179, 8, 0.14)' },
-  fechado: { label: 'Venda concluída', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.14)' },
-  perdido: { label: 'Não avançou', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.14)' },
-};
-
-export const LEAD_ORIGEM_LABELS: Record<LeadOrigem, string> = {
-  'quiz-instagram': 'Quiz Instagram',
-  site: 'Site Institucional',
-  manual: 'Manual',
-  indicacao: 'Indicação',
-  google: 'Google',
-  outro: 'Outro',
-};
-
-export const KANBAN_COLUMN_ORDER: LeadStatus[] = [
-  'novo',
-  'qualificado',
-  'agendado',
-  'em_reuniao',
-  'proposta',
-  'fechado',
-  'perdido',
-];
+import { type NavItem } from '@/types';
 
 // ---- Navigation ----
 

@@ -4,15 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
 import { createClient } from '@/lib/supabase/client';
-import { LEAD_STATUS_CONFIG, LEAD_ORIGEM_LABELS } from '@/lib/constants';
-import { Lead, LeadStatus, LeadOrigem } from '@/types';
 import Link from 'next/link';
 import { formatLocalDateISO, getTodayISO } from '@/lib/utils';
 
 const VALUES_VISIBLE_KEY = 'nossa-otica:valores-visiveis';
 
 export default function DashboardPage() {
-  const { leads, clients, bookings, sales, goals, addLead, team, tasks, updateTaskStatus } = useCRM();
+  const { clients, bookings, sales, goals, team, tasks, updateTaskStatus } = useCRM();
   const router = useRouter();
   const handleLogout = async () => {
     const supabase = createClient();
@@ -21,8 +19,6 @@ export default function DashboardPage() {
   };
   const [timeFilter, setTimeFilter] = useState<'today' | 'week'>('week');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
 
   const [activeDayIndex, setActiveDayIndex] = useState(2); // Default to Wednesday
 
@@ -47,58 +43,8 @@ export default function DashboardPage() {
     ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
     : 'R$ ★★★★');
 
-  // Form State for new lead
-  const [newLeadName, setNewLeadName] = useState('');
-  const [newLeadEmail, setNewLeadEmail] = useState('');
-  const [newLeadPhone, setNewLeadPhone] = useState('');
-  const [newLeadCompany, setNewLeadCompany] = useState('');
-  const [newLeadSegment, setNewLeadSegment] = useState('');
-  const [newLeadValue, setNewLeadValue] = useState(3000);
-  const [newLeadOrigin, setNewLeadOrigin] = useState<LeadOrigem>('quiz-instagram');
-  const [newLeadResponsavelId, setNewLeadResponsavelId] = useState('');
-
   // Calculate dynamic stats
   const totalRevenue = sales.filter(s => s.status === 'fechado').reduce((acc, curr) => acc + curr.valor, 0);
-
-  // Calculate dynamic sales value for each origin
-  const quizInstagramSales = sales
-    .filter(s => s.status === 'fechado')
-    .reduce((acc, s) => {
-      const lead = leads.find(l => l.id === s.lead_id);
-      return lead?.origem === 'quiz-instagram' ? acc + s.valor : acc;
-    }, 0);
-
-  const siteSales = sales
-    .filter(s => s.status === 'fechado')
-    .reduce((acc, s) => {
-      const lead = leads.find(l => l.id === s.lead_id);
-      return lead?.origem === 'site' ? acc + s.valor : acc;
-    }, 0);
-
-  const indicacaoSales = sales
-    .filter(s => s.status === 'fechado')
-    .reduce((acc, s) => {
-      const lead = leads.find(l => l.id === s.lead_id);
-      return lead?.origem === 'indicacao' ? acc + s.valor : acc;
-    }, 0);
-
-  const outrasSales = sales
-    .filter(s => s.status === 'fechado')
-    .reduce((acc, s) => {
-      const lead = leads.find(l => l.id === s.lead_id);
-      return (lead && ['manual', 'google', 'outro'].includes(lead.origem)) ? acc + s.valor : acc;
-    }, 0);
-
-  // Total faturamento closed
-  const totalClosedSalesVal = sales
-    .filter(s => s.status === 'fechado')
-    .reduce((acc, curr) => acc + curr.valor, 0);
-
-  // Representation percentage
-  const quizShare = totalClosedSalesVal > 0 ? (quizInstagramSales / totalClosedSalesVal) * 100 : 0;
-  const siteShare = totalClosedSalesVal > 0 ? (siteSales / totalClosedSalesVal) * 100 : 0;
-  const indicacaoShare = totalClosedSalesVal > 0 ? (indicacaoSales / totalClosedSalesVal) * 100 : 0;
-  const outrasShare = totalClosedSalesVal > 0 ? (outrasSales / totalClosedSalesVal) * 100 : 0;
 
   // Clientes por origem (ramo ótica): conta o cadastro de Clientes — mexe a cada cliente novo.
   const totalClientsCount = clients.length;
@@ -247,37 +193,6 @@ export default function DashboardPage() {
     setActiveDayIndex(index);
   };
 
-
-  const handleCreateLead = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLeadName.trim()) return;
-
-    addLead({
-      nome: newLeadName,
-      email: newLeadEmail || null,
-      telefone: newLeadPhone || null,
-      origem: newLeadOrigin,
-      status: 'novo',
-      responsavel_id: newLeadResponsavelId || (team.length > 0 ? team[0].id : null),
-      respostas_quiz: null,
-      empresa: newLeadCompany || null,
-      segmento: newLeadSegment || null,
-      notas: 'Cliente cadastrado manualmente a partir do painel.',
-      valor_estimado: Number(newLeadValue),
-      motivo_perda: null
-    });
-
-    // Reset Form
-    setNewLeadName('');
-    setNewLeadEmail('');
-    setNewLeadPhone('');
-    setNewLeadCompany('');
-    setNewLeadSegment('');
-    setNewLeadValue(3000);
-    setNewLeadOrigin('quiz-instagram');
-    setNewLeadResponsavelId('');
-    setIsNewLeadModalOpen(false);
-  };
 
   // Clientes recentes (cadastro de Clientes), com filtro da busca do topo
   const searchDigits = searchQuery.replace(/\D/g, '');
@@ -771,160 +686,6 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* --- MODAL 1: Lead Details --- */}
-      {selectedLead && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.75)',
-          backdropFilter: 'blur(5px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--glass-border-strong)',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '550px',
-            padding: '32px',
-            boxShadow: 'var(--shadow-lg)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px'
-          }}>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px' }}>
-                  Ficha do Cliente
-                </span>
-                <h3 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
-                  {selectedLead.nome}
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedLead(null)}
-                style={{
-                  color: 'var(--text-muted)',
-                  fontSize: '20px',
-                  padding: '4px'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '13px' }}>
-              <div>
-                <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Empresa</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.empresa || 'Não informada'}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Segmento</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.segmento || 'Não informado'}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>WhatsApp / Telefone</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.telefone || 'Não informado'}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>E-mail</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedLead.email || 'Não informado'}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Origem</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{LEAD_ORIGEM_LABELS[selectedLead.origem]}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Valor Comercial</span>
-                <span style={{ fontWeight: 700, color: 'var(--status-success)' }}>
-                  R$ {selectedLead.valor_estimado ? selectedLead.valor_estimado.toLocaleString('pt-BR') : '0'}
-                </span>
-              </div>
-            </div>
-
-            {/* Quiz Responses */}
-            {selectedLead.respostas_quiz && selectedLead.respostas_quiz.length > 0 ? (
-              <div style={{
-                background: 'var(--surface-subtle)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: '12px',
-                padding: '16px'
-              }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                  Respostas do Quiz de Qualificação (Nossa Ótica)
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {selectedLead.respostas_quiz.map((resp, i) => (
-                    <div key={i} style={{ fontSize: '12.5px' }}>
-                      <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{resp.pergunta}</div>
-                      <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>{resp.resposta}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{
-                background: 'var(--surface-subtle)',
-                border: '1px dashed rgba(255,255,255,0.05)',
-                borderRadius: '12px',
-                padding: '16px',
-                textAlign: 'center',
-                color: 'var(--text-secondary)',
-                fontSize: '12px'
-              }}>
-                Cliente cadastrado manualmente ou pelo site.
-              </div>
-            )}
-
-            <div>
-              <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontSize: '13px' }}>Notas Internas</span>
-              <p style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>
-                {selectedLead.notas || 'Sem observações adicionais.'}
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <button
-                onClick={() => setSelectedLead(null)}
-                style={{
-                  background: 'var(--surface-hover)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '100px',
-                  padding: '10px 20px',
-                  fontSize: '13px',
-                  fontWeight: 600
-                }}
-              >
-                Fechar Ficha
-              </button>
-              <Link
-                href="/leads"
-                onClick={() => setSelectedLead(null)}
-                style={{
-                  background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '100px',
-                  padding: '10px 20px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                  textAlign: 'center'
-                }}
-              >
-                Ver no Kanban
-              </Link>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* Modal 2: Create Lead removed from Dashboard */}
 
     </div>
   );

@@ -1,26 +1,40 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Lead, Booking, Sale, Goal, Profile, LeadStatus, LeadOrigem, Task } from '@/types';
+import { Booking, Sale, Goal, Profile, Task } from '@/types';
 import { ClientRecord } from '@/types/clients';
 import { createClient } from '@/lib/supabase/client';
 import { getTodayISO } from '@/lib/utils';
 import { sanitizeOptionalText, sanitizePlainText } from '@/lib/security';
 import { teamMemberErrorMessage } from '@/lib/team-errors';
+import type { PermissionKey } from '@/lib/permissions';
+
+/** O que a administradora marcou na lista de acessos (migration 030). */
+export interface TeamMemberPermissions {
+  permissoes: PermissionKey[];
+  podeExcluir: boolean;
+  veTudo: boolean;
+  admin: boolean;
+}
+
+export interface NewTeamMember extends TeamMemberPermissions {
+  email: string;
+  pass: string;
+  nome: string;
+  cargo: string;
+}
 
 interface CRMContextType {
-  leads: Lead[];
   clients: ClientRecord[];
   bookings: Booking[];
   sales: Sale[];
   goals: Goal[];
   team: Profile[];
-  addLead: (lead: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => void;
-  updateLeadStatus: (leadId: string, status: LeadStatus, vendedor_id?: string) => void;
   addBooking: (booking: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) => Promise<{ success: boolean; error?: string }>;
   updateBookingStatus: (bookingId: string, status: Booking['status']) => void;
   deleteBooking: (bookingId: string) => Promise<boolean>;
-  addTeamMember: (memberData: { email: string; pass: string; nome: string; cargo: string; role: string }) => Promise<{ success: boolean; error?: string }>;
+  addTeamMember: (memberData: NewTeamMember) => Promise<{ success: boolean; error?: string }>;
+  updateTeamMemberPermissions: (memberId: string, permissions: TeamMemberPermissions) => Promise<{ success: boolean; error?: string }>;
   addSale: (sale: Omit<Sale, 'id' | 'created_at' | 'updated_at'>) => void;
   updateGoalProgress: (goalId: string, value: number) => void;
   addGoal: (goal: Omit<Goal, 'id' | 'created_at'>) => void;
@@ -37,7 +51,6 @@ interface CRMContextType {
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [team, setTeam] = useState<Profile[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -52,8 +65,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!silent) setLoading(true);
     
     // Buscar dados reais do Supabase
-    const [leadsRes, teamRes, bookingsRes, salesRes, goalsRes, tasksRes, clientsRes] = await Promise.all([
-      supabase.from('leads').select('*').order('created_at', { ascending: false }),
+    const [teamRes, bookingsRes, salesRes, goalsRes, tasksRes, clientsRes] = await Promise.all([
       supabase.from('profiles').select('*'),
       supabase.from('bookings').select('*').order('data', { ascending: true }),
       supabase.from('sales').select('*').order('created_at', { ascending: false }),
@@ -62,7 +74,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.from('clients').select('*').order('name', { ascending: true }),
     ]);
 
-    if (leadsRes.data) setLeads(leadsRes.data as Lead[]);
     if (clientsRes.data) setClients(clientsRes.data as ClientRecord[]);
     if (teamRes.data) setTeam(teamRes.data as Profile[]);
     if (salesRes.data) setSales(salesRes.data as Sale[]);
@@ -75,12 +86,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reloadChangedTable = async (
-    table: 'leads' | 'bookings' | 'sales' | 'goals' | 'tasks' | 'clients',
+    table: 'bookings' | 'sales' | 'goals' | 'tasks' | 'clients',
   ) => {
-    if (table === 'leads') {
-      const { data } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-      if (data) setLeads(data as Lead[]);
-    } else if (table === 'bookings') {
+    if (table === 'bookings') {
       const { data } = await supabase.from('bookings').select('*').order('data', { ascending: true });
       if (data) setBookings(data as Booking[]);
     } else if (table === 'sales') {
@@ -103,7 +111,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Set up realtime subscriptions
     const channel = supabase.channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => void reloadChangedTable('leads'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => void reloadChangedTable('bookings'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => void reloadChangedTable('sales'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => void reloadChangedTable('goals'))
@@ -116,60 +123,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const addLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => {
-    const safeLeadData = {
-      ...leadData,
-      nome: sanitizePlainText(leadData.nome, 160).trim(),
-      email: sanitizeOptionalText(leadData.email, 254),
-      telefone: sanitizeOptionalText(leadData.telefone, 30),
-      empresa: sanitizeOptionalText(leadData.empresa, 160),
-      segmento: sanitizeOptionalText(leadData.segmento, 120),
-      notas: sanitizeOptionalText(leadData.notas, 5000),
-      motivo_perda: sanitizeOptionalText(leadData.motivo_perda, 1000),
-    };
-    const { data, error } = await supabase.from('leads').insert([safeLeadData]).select();
-    if (data && data.length > 0) {
-      setLeads(prev => [data[0] as Lead, ...prev]);
-    } else if (error) {
-      console.error('Erro ao adicionar lead:', error);
-    }
-  };
-
-  const updateLeadStatus = async (leadId: string, status: LeadStatus, vendedor_id?: string) => {
-    const { data, error } = await supabase.from('leads').update({ status }).eq('id', leadId).select();
-    if (data && data.length > 0) {
-      const updatedLead = data[0] as Lead;
-      setLeads(prev => prev.map(l => l.id === leadId ? updatedLead : l));
-      
-      // Auto-gerar venda
-      if (status === 'fechado') {
-        setSales(prevSales => {
-          const existingSale = prevSales.find((s) => s.lead_id === leadId);
-          if (!existingSale) {
-            setLeads(prevLeads => {
-              const lead = prevLeads.find((l) => l.id === leadId);
-              addSale({
-                lead_id: leadId,
-                vendedor_id: vendedor_id || lead?.responsavel_id || null,
-                servico_id: null,
-                servico_nome: 'Óculos completos',
-                valor: lead?.valor_estimado || 0,
-                parcelas: 1,
-                status: 'fechado',
-                data_fechamento: getTodayISO(),
-                notas: `Faturamento automático após lead ser marcado como ganho/fechado no pipeline.`
-              });
-              return prevLeads;
-            });
-          }
-          return prevSales;
-        });
-      }
-    } else if (error) {
-      console.error('Erro ao atualizar lead:', error);
-    }
-  };
-
   const addBooking = async (bookingData: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) => {
     const safeBookingData = {
       ...bookingData,
@@ -179,9 +132,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { data, error } = await supabase.from('bookings').insert([safeBookingData]).select();
     if (data && data.length > 0) {
       setBookings(prev => [...prev, data[0] as Booking]);
-      if (bookingData.lead_id) {
-        updateLeadStatus(bookingData.lead_id, 'agendado');
-      }
       return { success: true };
     } else if (error) {
       console.error('Erro ao adicionar booking:', error);
@@ -195,9 +145,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (data && data.length > 0) {
       const updatedBooking = data[0] as Booking;
       setBookings(prev => prev.map(b => b.id === bookingId ? updatedBooking : b));
-      if (status === 'realizado' && updatedBooking.lead_id) {
-        updateLeadStatus(updatedBooking.lead_id, 'em_reuniao');
-      }
     } else if (error) {
       console.error('Erro ao atualizar booking:', error);
     }
@@ -272,19 +219,22 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addTeamMember = async (memberData: { email: string; pass: string; nome: string; cargo: string; role: string }): Promise<{ success: boolean; error?: string }> => {
+  const addTeamMember = async (memberData: NewTeamMember): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data, error } = await supabase.rpc('create_team_member', {
         p_email: memberData.email,
         p_password: memberData.pass,
         p_nome: memberData.nome,
         p_cargo: memberData.cargo,
-        p_role: memberData.role
+        p_permissoes: memberData.permissoes,
+        p_pode_excluir: memberData.podeExcluir,
+        p_ve_tudo: memberData.veTudo,
+        p_admin: memberData.admin,
       });
 
       if (error) {
         // O motivo real vem do banco (senha curta, migration faltando...).
-        return { success: false, error: teamMemberErrorMessage(error, memberData.role) };
+        return { success: false, error: teamMemberErrorMessage(error) };
       }
 
       if (data && data.success === false) {
@@ -299,6 +249,32 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       console.error('Erro ao adicionar membro da equipe:', err);
       return { success: false, error: 'Não foi possível criar o membro da equipe.' };
+    }
+  };
+
+  const updateTeamMemberPermissions = async (
+    memberId: string,
+    permissions: TeamMemberPermissions,
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.rpc('atualizar_permissoes', {
+        p_user_id: memberId,
+        p_permissoes: permissions.permissoes,
+        p_pode_excluir: permissions.podeExcluir,
+        p_ve_tudo: permissions.veTudo,
+        p_admin: permissions.admin,
+      });
+
+      if (error) return { success: false, error: teamMemberErrorMessage(error) };
+      if (data && data.success === false) return { success: false, error: data.error };
+
+      const { data: teamRes } = await supabase.from('profiles').select('*');
+      if (teamRes) setTeam(teamRes as Profile[]);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Erro ao salvar permissões:', err);
+      return { success: false, error: 'Não foi possível salvar as permissões.' };
     }
   };
 
@@ -362,15 +338,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <CRMContext.Provider
       value={{
-        leads,
         clients,
         bookings,
         tasks,
         sales,
         goals,
         team,
-        addLead,
-        updateLeadStatus,
         addBooking,
         updateBookingStatus,
         deleteBooking,
@@ -378,6 +351,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTaskStatus,
         deleteTask,
         addTeamMember,
+        updateTeamMemberPermissions,
         toggleTeamMemberActive,
         addSale,
         updateGoalProgress,

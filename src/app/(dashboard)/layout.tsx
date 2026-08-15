@@ -5,7 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import React, { useState, useEffect } from 'react';
 import { NAV_ITEMS } from '@/lib/constants';
-import { canAccessRoute, HOME_BY_ROLE } from '@/lib/permissions';
+import { canAccessRoute, homeRouteFor } from '@/lib/permissions';
+import type { AccessProfile, PermissionKey } from '@/lib/permissions';
 import type { UserRole } from '@/types';
 
 // SVG Icons matching the mockup
@@ -94,7 +95,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
+  const [access, setAccess] = useState<AccessProfile>({ role: null, permissoes: null });
+  const currentRole = access.role;
   const [darkMode, setDarkMode] = useState(true);
   const [channelsExpanded, setChannelsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,12 +110,23 @@ export default function DashboardLayout({
       if (!session) {
         router.push('/login');
       } else {
-        // Verificar se o perfil está ativo no banco
-        const { data: profile, error } = await supabase
+        // Verificar se o perfil está ativo no banco. As colunas de marcação
+        // só existem depois da migration 030; se o banco ainda estiver sem
+        // elas, a consulta inteira falharia e ninguém entraria — por isso a
+        // segunda tentativa só com o que sempre existiu.
+        let { data: profile, error } = await supabase
           .from('profiles')
-          .select('ativo, role')
+          .select('ativo, role, permissoes, pode_excluir, ve_tudo')
           .eq('id', session.user.id)
           .single();
+
+        if (error?.code === '42703') {
+          ({ data: profile, error } = await supabase
+            .from('profiles')
+            .select('ativo, role')
+            .eq('id', session.user.id)
+            .single());
+        }
 
         // Antes qualquer erro aqui deslogava — inclusive um tropeço de rede,
         // que tirava a dona do sistema no meio do trabalho. Agora só desloga
@@ -134,8 +147,17 @@ export default function DashboardLayout({
           // o que não for permitido, então nada escapa por causa disso.
           console.warn('Não foi possível conferir o perfil agora:', error.message);
           setIsAuthorized(true);
+        } else if (profile) {
+          setAccess({
+            role: profile.role as UserRole,
+            permissoes: (profile.permissoes as PermissionKey[] | null | undefined) ?? null,
+            pode_excluir: Boolean(profile.pode_excluir),
+            ve_tudo: Boolean(profile.ve_tudo),
+          });
+          setIsAuthorized(true);
         } else {
-          setCurrentRole(profile.role as UserRole);
+          // Sem erro e sem perfil não deveria acontecer; deixa a tela em pé e
+          // confia no banco, como no ramo de falha passageira acima.
           setIsAuthorized(true);
         }
       }
@@ -163,11 +185,10 @@ export default function DashboardLayout({
   // em vez de bater num aviso de "acesso não autorizado" logo após o login.
   useEffect(() => {
     if (!isAuthorized || !currentRole) return;
-    const fallback = HOME_BY_ROLE[currentRole];
-    if (fallback && !canAccessRoute(pathname, currentRole)) {
-      router.replace(fallback);
-    }
-  }, [isAuthorized, currentRole, pathname, router]);
+    if (canAccessRoute(pathname, access)) return;
+    const destino = homeRouteFor(access);
+    if (destino && destino !== pathname) router.replace(destino);
+  }, [isAuthorized, currentRole, access, pathname, router]);
 
   useEffect(() => {
     if (!isAuthorized) return;
@@ -237,8 +258,8 @@ export default function DashboardLayout({
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>Verificando acesso...</div>;
   }
 
-  const visibleNavItems = NAV_ITEMS.filter((item) => canAccessRoute(item.href, currentRole));
-  const currentRouteAllowed = canAccessRoute(pathname, currentRole);
+  const visibleNavItems = NAV_ITEMS.filter((item) => canAccessRoute(item.href, access));
+  const currentRouteAllowed = canAccessRoute(pathname, access);
 
   return (
     <div className="dashboard-layout">
@@ -494,7 +515,7 @@ export default function DashboardLayout({
           { label: 'Clientes', href: '/clientes', icon: 'leads' },
           { label: 'Agenda', href: '/calendario', icon: 'calendar' },
           { label: 'O.S.', href: '/ordens', icon: 'sales' },
-        ].filter((item) => canAccessRoute(item.href, currentRole)).map((item) => {
+        ].filter((item) => canAccessRoute(item.href, access)).map((item) => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           return (
             <Link key={item.href} href={item.href} className={`bottom-nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>

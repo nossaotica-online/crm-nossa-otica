@@ -5,20 +5,29 @@ import { useCRM } from '@/context/CRMContext';
 import { createClient } from '@/lib/supabase/client';
 import { MIN_PASSWORD_LENGTH, validateNewTeamMember } from '@/lib/team-errors';
 import { useConfirm } from '@/components/ConfirmDialog';
+import PermissionPicker, { resumoPermissoes, type PermissionState } from '@/components/PermissionPicker';
+import { DEFAULT_PERMISSIONS, type PermissionKey } from '@/lib/permissions';
 import type { Profile } from '@/types';
 
-// Explicação em português do que cada acesso permite, para a escolha não
-// depender de decorar o nome da função.
-const ROLE_HELP: Record<string, string> = {
-  funcionario: 'Cadastra O.S., atende qualquer cliente da ótica e cuida das tarefas. Não vê faturamento, metas, equipe nem o painel de início. Não exclui nada.',
-  vendedor: 'Vê apenas os clientes, orçamentos e tarefas que ele mesmo cadastrou.',
-  consultor: 'Mesmo alcance do vendedor: só os registros dele.',
-  gestor: 'Vê tudo da operação, inclusive faturamento e metas. Não mexe na equipe.',
-  admin: 'Acesso total, inclusive criar e desativar acessos.',
+// Marcação de um acesso novo: o balcão da ótica, que é o caso comum.
+const MARCACAO_INICIAL: PermissionState = {
+  permissoes: [...DEFAULT_PERMISSIONS],
+  podeExcluir: false,
+  veTudo: true,
+  admin: false,
 };
 
+// Enquanto a migration 030 não roda, `permissoes` vem indefinido do banco:
+// o cartão então mostra o cargo antigo em vez de "nenhuma tela liberada".
+const estadoDoPerfil = (membro: Profile): PermissionState => ({
+  permissoes: (membro.permissoes ?? []) as PermissionKey[],
+  podeExcluir: Boolean(membro.pode_excluir),
+  veTudo: Boolean(membro.ve_tudo),
+  admin: membro.role === 'admin',
+});
+
 export default function TeamPage() {
-  const { team, clients, bookings, sales, addTeamMember, toggleTeamMemberActive } = useCRM();
+  const { team, clients, bookings, sales, addTeamMember, updateTeamMemberPermissions, toggleTeamMemberActive } = useCRM();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,11 +44,40 @@ export default function TeamPage() {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [cargo, setCargo] = useState('');
-  const [role, setRole] = useState('funcionario');
+  const [marcacao, setMarcacao] = useState<PermissionState>(MARCACAO_INICIAL);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aviso, setAviso] = useState('');
   const { confirm, confirmDialog } = useConfirm();
+
+  // Edição da marcação de quem já existe.
+  const [membroEmEdicao, setMembroEmEdicao] = useState<Profile | null>(null);
+  const [marcacaoEdicao, setMarcacaoEdicao] = useState<PermissionState>(MARCACAO_INICIAL);
+  const [erroEdicao, setErroEdicao] = useState('');
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+
+  const abrirEdicao = (membro: Profile) => {
+    setErroEdicao('');
+    setMembroEmEdicao(membro);
+    setMarcacaoEdicao(estadoDoPerfil(membro));
+  };
+
+  const salvarEdicao = async () => {
+    if (!membroEmEdicao) return;
+    setErroEdicao('');
+
+    if (!marcacaoEdicao.admin && marcacaoEdicao.permissoes.length === 0) {
+      setErroEdicao('Marque pelo menos uma tela que esta pessoa pode abrir.');
+      return;
+    }
+
+    setSalvandoEdicao(true);
+    const resultado = await updateTeamMemberPermissions(membroEmEdicao.id, marcacaoEdicao);
+    setSalvandoEdicao(false);
+
+    if (resultado.success) setMembroEmEdicao(null);
+    else setErroEdicao(resultado.error || 'Não foi possível salvar as permissões.');
+  };
 
   // Desativar acesso é irreversível na prática: se cair o último admin ativo,
   // ninguém mais entra para reativar — nem pelo app, nem pelo próprio CRM.
@@ -79,7 +117,11 @@ export default function TeamPage() {
     setErrorMsg('');
 
     // O que dá para conferir aqui não precisa de ida ao banco.
-    const problema = validateNewTeamMember({ password });
+    const problema = validateNewTeamMember({
+      password,
+      permissoes: marcacao.permissoes,
+      admin: marcacao.admin,
+    });
     if (problema) return setErrorMsg(problema);
 
     setIsSubmitting(true);
@@ -89,7 +131,7 @@ export default function TeamPage() {
       pass: password,
       nome,
       cargo,
-      role
+      ...marcacao,
     });
 
     setIsSubmitting(false);
@@ -100,7 +142,7 @@ export default function TeamPage() {
       setPassword('');
       setNome('');
       setCargo('');
-      setRole('funcionario');
+      setMarcacao(MARCACAO_INICIAL);
     } else {
       setErrorMsg(result.error || 'Erro ao criar usuário');
     }
@@ -205,6 +247,23 @@ export default function TeamPage() {
                 <div>Whatsapp: <strong style={{ color: 'var(--text-primary)' }}>{member.telefone || 'Não informado'}</strong></div>
               </div>
 
+              {/* O que ela acessa hoje, em uma linha */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.4px' }}>
+                  Acessa
+                </span>
+                <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  {resumoPermissoes(estadoDoPerfil(member))}
+                </span>
+                {!member.role.includes('admin') && (member.pode_excluir || member.ve_tudo) && (
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                    {[member.ve_tudo ? 'enxerga tudo da loja' : null,
+                      member.pode_excluir ? 'pode excluir' : null]
+                      .filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+
               <hr style={{ border: 'none', height: '1px', background: 'var(--surface-hover)', margin: 0 }} />
 
               {/* Stats Grid */}
@@ -231,6 +290,23 @@ export default function TeamPage() {
                   cartão da própria dona — um clique e ninguém mais entrava. */}
               {currentUserId !== null && member.id !== currentUserId && (
                 <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '10px' }}>
+                  <button
+                    onClick={() => abrirEdicao(member)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      background: 'var(--surface-hover)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Editar acesso
+                  </button>
                   <button
                     onClick={() => void handleToggleActive(member)}
                     style={{
@@ -277,6 +353,8 @@ export default function TeamPage() {
               borderRadius: '20px',
               width: '100%',
               maxWidth: '480px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
               padding: '32px',
               boxShadow: 'var(--shadow-lg)',
               display: 'flex',
@@ -367,26 +445,8 @@ export default function TeamPage() {
               />
             </div>
 
-            {/* Permissão */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Nível de Acesso *
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13.5px', outline: 'none' }}
-              >
-                <option value="funcionario">Funcionário de balcão (O.S., Clientes e Tarefas)</option>
-                <option value="vendedor">Vendedor (só o que ele mesmo cadastrar)</option>
-                <option value="consultor">Consultor (Entrega)</option>
-                <option value="gestor">Gestor (Acesso Médio)</option>
-                <option value="admin">Administrador (Total)</option>
-              </select>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {ROLE_HELP[role] || ''}
-              </span>
-            </div>
+            {/* O que esta pessoa acessa */}
+            <PermissionPicker value={marcacao} onChange={setMarcacao} />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
               <button
@@ -425,6 +485,99 @@ export default function TeamPage() {
             </div>
 
           </form>
+        </div>
+      )}
+
+      {/* Modal: Editar o acesso de quem já existe */}
+      {membroEmEdicao && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--glass-border-strong)',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '480px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '32px',
+            boxShadow: 'var(--shadow-lg)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Acesso de {membroEmEdicao.nome}
+                </h3>
+                <span style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                  Marque e desmarque à vontade — vale na próxima vez que ela abrir o sistema.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMembroEmEdicao(null)}
+                style={{ color: 'var(--text-muted)', fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {erroEdicao && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '8px', color: '#f87171', fontSize: '13px', lineHeight: 1.5 }}>
+                {erroEdicao}
+              </div>
+            )}
+
+            <PermissionPicker value={marcacaoEdicao} onChange={setMarcacaoEdicao} />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setMembroEmEdicao(null)}
+                style={{
+                  background: 'var(--surface-hover)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '100px',
+                  padding: '10px 20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void salvarEdicao()}
+                disabled={salvandoEdicao}
+                style={{
+                  background: 'linear-gradient(135deg, #0052cc 0%, #ead7b1 100%)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '100px',
+                  padding: '10px 20px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  opacity: salvandoEdicao ? 0.7 : 1
+                }}
+              >
+                {salvandoEdicao ? 'Salvando...' : 'Salvar acesso'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

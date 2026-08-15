@@ -5,7 +5,7 @@
 
 // O Node lê o TypeScript direto, então o teste roda contra o arquivo de
 // verdade que o menu usa — não contra uma cópia.
-const { canAccessRoute, HOME_BY_ROLE } = await import('../src/lib/permissions.ts');
+const { canAccessRoute, HOME_BY_ROLE, homeRouteFor } = await import('../src/lib/permissions.ts');
 
 // [rota, função, pode?]
 const CASES = [
@@ -66,9 +66,52 @@ if (home !== '/ordens' || !canAccessRoute(home, 'funcionario')) {
   console.log(`PASS  funcionário entra direto em ${home}`);
 }
 
+// ------------------------------------------------------------
+// Depois da migration 030: acesso pela lista marcada, não pelo cargo.
+// ------------------------------------------------------------
+let marcados = 0;
+const checkMarcado = (nome, condicao, detalhe = '') => {
+  marcados += 1;
+  if (condicao) return console.log(`PASS  ${nome}`);
+  failures += 1;
+  console.log(`FALHOU ${nome} ${detalhe}`);
+};
+
+// O caso que a dona pediu: clientes, O.S. e calendário, sem dinheiro.
+const balcao = {
+  role: 'funcionario',
+  permissoes: ['clientes', 'ordens', 'calendario'],
+};
+checkMarcado('marcado abre Clientes', canAccessRoute('/clientes', balcao));
+checkMarcado('marcado abre O.S.', canAccessRoute('/ordens', balcao));
+checkMarcado('marcado abre Calendário', canAccessRoute('/calendario', balcao));
+checkMarcado('não marcado NÃO abre Orçamentos', !canAccessRoute('/vendas', balcao));
+checkMarcado('não marcado NÃO abre Metas', !canAccessRoute('/metas', balcao));
+checkMarcado('não marcado NÃO abre o painel', !canAccessRoute('/', balcao));
+checkMarcado('Equipe nunca sai na marcação', !canAccessRoute('/equipe', balcao));
+checkMarcado('Configurações nunca sai na marcação', !canAccessRoute('/configuracoes', balcao));
+checkMarcado('sub-rota segue a tela mãe', canAccessRoute('/clientes/123', balcao));
+checkMarcado('entra direto na primeira tela liberada',
+  homeRouteFor(balcao) === '/clientes', homeRouteFor(balcao));
+
+// Marcar Orçamentos passa a liberar de verdade.
+const comDinheiro = { role: 'funcionario', permissoes: ['clientes', 'vendas'] };
+checkMarcado('marcar Orçamentos libera Orçamentos', canAccessRoute('/vendas', comDinheiro));
+
+// Administradora não depende de marcação nenhuma.
+const admin = { role: 'admin', permissoes: [] };
+checkMarcado('administradora abre Equipe', canAccessRoute('/equipe', admin));
+checkMarcado('administradora abre o painel', canAccessRoute('/', admin));
+checkMarcado('administradora abre Configurações', canAccessRoute('/configuracoes', admin));
+
+// Lista vazia: entra e não vê nada — e não adianta mandar para lugar nenhum.
+const semNada = { role: 'funcionario', permissoes: [] };
+checkMarcado('sem marcação não abre nada', !canAccessRoute('/clientes', semNada));
+checkMarcado('sem marcação não tem tela inicial', homeRouteFor(semNada) === null);
+
 console.log('');
 if (failures > 0) {
   console.error(`${failures} verificação(ões) falharam.`);
   process.exit(1);
 }
-console.log(`OK: ${CASES.length + 1} verificações de acesso passaram.`);
+console.log(`OK: ${CASES.length + 1 + marcados} verificações de acesso passaram.`);
