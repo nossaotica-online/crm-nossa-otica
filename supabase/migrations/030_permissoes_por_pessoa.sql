@@ -494,7 +494,11 @@ BEGIN
   END IF;
 
   v_user_id := gen_random_uuid();
-  v_encrypted_pw := extensions.crypt(p_password, extensions.gen_salt('bf'));
+  BEGIN
+    v_encrypted_pw := extensions.crypt(p_password, extensions.gen_salt('bf'));
+  EXCEPTION WHEN OTHERS THEN
+    v_encrypted_pw := crypt(p_password, gen_salt('bf'));
+  END;
 
   INSERT INTO auth.users (
     instance_id, id, aud, role, email, encrypted_password,
@@ -520,13 +524,14 @@ BEGIN
   );
 
   INSERT INTO auth.identities (
-    id, user_id, identity_data, provider,
+    id, user_id, identity_data, provider, provider_id,
     last_sign_in_at, created_at, updated_at
   ) VALUES (
     v_user_id,
     v_user_id,
     jsonb_build_object('sub', v_user_id, 'email', v_email),
     'email',
+    v_user_id::text,
     now(),
     now(),
     now()
@@ -565,7 +570,7 @@ EXCEPTION
   WHEN insufficient_privilege OR invalid_parameter_value THEN
     RAISE;
   WHEN OTHERS THEN
-    RETURN jsonb_build_object('success', FALSE, 'error', 'Não foi possível criar o usuário.');
+    RETURN jsonb_build_object('success', FALSE, 'error', SQLERRM);
 END;
 $$;
 
