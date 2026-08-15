@@ -15,7 +15,6 @@ const CASES = [
   ['/calendario', 'funcionario', true],
   ['/', 'funcionario', false],
   ['/vendas', 'funcionario', false],
-  ['/leads', 'funcionario', false],
   ['/metas', 'funcionario', false],
   ['/equipe', 'funcionario', false],
   ['/configuracoes', 'funcionario', false],

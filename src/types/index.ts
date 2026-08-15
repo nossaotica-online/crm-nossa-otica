@@ -4,8 +4,10 @@
 
 // ---- Database Row Types ----
 
-// 'funcionario' é o balcão: cadastra O.S., atende qualquer cliente da ótica
-// e cuida das tarefas — sem faturamento, metas, equipe nem painel de início.
+// Desde a migration 030 o acesso é marcado tela a tela em `permissoes`, e o
+// cargo virou só o interruptor mestre: 'admin' pode tudo, o resto ('funcionario'
+// nos acessos novos) depende da marcação. Os cargos antigos continuam válidos
+// para quem foi criado antes — a 030 converteu cada um na marcação equivalente.
 export type UserRole = 'admin' | 'gestor' | 'vendedor' | 'consultor' | 'funcionario';
 
 export interface Profile {
@@ -24,15 +26,10 @@ export interface Profile {
   updated_at: string;
 }
 
-export type LeadStatus =
-  | 'novo'
-  | 'qualificado'
-  | 'agendado'
-  | 'em_reuniao'
-  | 'proposta'
-  | 'fechado'
-  | 'perdido';
-
+// O Pipeline de leads era do CRM antigo da agência e foi removido em
+// 2026-08-15. As colunas `lead_id` continuam nas tabelas do banco (bookings,
+// sales, activities) por causa dos registros antigos, mas nada no app grava
+// ou lê lead nenhum.
 export type LeadOrigem =
   | 'quiz-instagram'
   | 'site'
@@ -40,33 +37,6 @@ export type LeadOrigem =
   | 'indicacao'
   | 'google'
   | 'outro';
-
-export interface Lead {
-  id: string;
-  nome: string;
-  email?: string | null;
-  telefone?: string | null;
-  origem: LeadOrigem;
-  status: LeadStatus;
-  responsavel_id?: string | null;
-  respostas_quiz?: QuizAnswer[] | null;
-  empresa?: string | null;
-  segmento?: string | null;
-  notas?: string | null;
-  valor_estimado?: number | null;
-  motivo_perda?: string | null;
-  created_at: string;
-  updated_at: string;
-  // Joined fields
-  responsavel?: Profile;
-  bookings?: Booking[];
-  activities?: Activity[];
-}
-
-export interface QuizAnswer {
-  pergunta: string;
-  resposta: string;
-}
 
 export type BookingStatus = 'confirmado' | 'realizado' | 'cancelado' | 'remarcado';
 export type BookingTipo = 'diagnostico' | 'proposta' | 'followup' | 'google_event';
@@ -88,7 +58,6 @@ export interface Booking {
   title?: string;
   isGoogleCalendar?: boolean;
   // Joined fields
-  lead?: Lead;
   consultor?: Profile;
 }
 
@@ -104,7 +73,6 @@ export interface Task {
   created_at?: string;
   updated_at?: string;
   // Joined fields
-  lead?: Lead;
   responsavel?: Profile;
 }
 
@@ -135,7 +103,6 @@ export interface Sale {
   created_at: string;
   updated_at: string;
   // Joined fields
-  lead?: Lead;
   vendedor?: Profile;
   servico?: Service;
 }
@@ -188,16 +155,6 @@ export interface ApiResponse<T = unknown> {
   message?: string;
 }
 
-export interface CreateLeadPayload {
-  nome: string;
-  email?: string;
-  telefone?: string;
-  origem?: LeadOrigem;
-  respostas_quiz?: QuizAnswer[];
-  empresa?: string;
-  segmento?: string;
-}
-
 export interface CreateBookingPayload {
   lead_id?: string;
   nome?: string;
@@ -218,13 +175,6 @@ export interface SlotsResponse {
 }
 
 // ---- UI Types ----
-
-export interface KanbanColumn {
-  id: LeadStatus;
-  title: string;
-  color: string;
-  leads: Lead[];
-}
 
 export interface DashboardKPIs {
   leadsHoje: number;

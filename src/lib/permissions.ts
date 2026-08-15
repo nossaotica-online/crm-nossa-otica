@@ -39,7 +39,6 @@ export const ROUTE_PERMISSION: Record<string, PermissionKey> = {
   '/ordens': 'ordens',
   '/calendario': 'calendario',
   '/vendas': 'vendas',
-  '/leads': 'clientes',
   '/metas': 'metas',
   '/equipe': 'equipe',
   '/configuracoes': 'configuracoes',
@@ -51,7 +50,6 @@ export const ROUTE_PERMISSION: Record<string, PermissionKey> = {
 export const ROUTE_ROLES: Record<string, UserRole[]> = {
   '/': ['admin', 'gestor', 'vendedor', 'consultor'],
   '/vendas': ['admin', 'gestor', 'vendedor', 'consultor'],
-  '/leads': ['admin', 'gestor', 'vendedor', 'consultor'],
   '/equipe': ['admin'],
   '/configuracoes': ['admin'],
   '/metas': ['admin', 'gestor'],
