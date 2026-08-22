@@ -10,6 +10,17 @@
 
 ALTER TABLE public.service_orders ADD COLUMN IF NOT EXISTS altura TEXT;
 
-ALTER TABLE public.service_orders
-  ADD CONSTRAINT service_orders_altura_limit
-  CHECK (char_length(COALESCE(altura, '')) <= 60) NOT VALID;
+-- Guardado para a migration poder ser rodada de novo sem erro: ADD CONSTRAINT
+-- não tem IF NOT EXISTS.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.service_orders'::regclass
+      AND conname = 'service_orders_altura_limit'
+  ) THEN
+    ALTER TABLE public.service_orders
+      ADD CONSTRAINT service_orders_altura_limit
+      CHECK (char_length(COALESCE(altura, '')) <= 60) NOT VALID;
+  END IF;
+END $$;
