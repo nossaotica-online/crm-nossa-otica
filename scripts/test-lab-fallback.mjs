@@ -107,11 +107,34 @@ const check = (name, condition, detail = '') => {
   check('com a 031 aplicada, grava numa tentativa só', droppedColumns.length === 0 && attempts.length === 1);
 }
 
-// 7. As duas formas de mensagem do PostgREST são reconhecidas.
+// 7. Banco sem a 032: o os_number existe, mas recusa valor vindo de fora
+//    (GENERATED ALWAYS). A O.S. tem que salvar com a numeração automática.
+{
+  const attempts = [];
+  const write = async (body) => {
+    attempts.push({ ...body });
+    if ('os_number' in body) {
+      return { data: null, error: { message: 'cannot insert a non-DEFAULT value into column "os_number"' } };
+    }
+    return { data: { id: 'os-1', os_number: 7, ...body }, error: null };
+  };
+  const { result, droppedColumns } = await writeDroppingMissingColumns(write, { ...BASE_COM_ALTURA, os_number: 300 });
+  check('sem a 032, a O.S. ainda é salva', result.error === null);
+  check('sem a 032, o número digitado é descartado', droppedColumns.join(',') === 'os_number', `obtido=${droppedColumns}`);
+  check('sem a 032, o banco numera sozinho', result.data?.os_number === 7, `obtido=${result.data?.os_number}`);
+  const aviso = missingColumnsNotice(droppedColumns);
+  check('aviso do número cita a migration 032', aviso.includes('número') && aviso.includes('032'), aviso);
+}
+
+// 8. As formas de mensagem do PostgREST são reconhecidas.
 check('lê "column ... does not exist"',
   missingColumnFrom('column service_orders.lab_sent_date does not exist') === 'lab_sent_date');
 check('lê "Could not find the ... column"',
   missingColumnFrom("Could not find the 'lab_due_date' column of 'service_orders' in the schema cache") === 'lab_due_date');
+check('lê "cannot insert a non-DEFAULT value"',
+  missingColumnFrom('cannot insert a non-DEFAULT value into column "os_number"') === 'os_number');
+check('lê "can only be updated to DEFAULT"',
+  missingColumnFrom('column "os_number" can only be updated to DEFAULT') === 'os_number');
 check('ignora mensagem sem coluna', missingColumnFrom('permission denied for table service_orders') === null);
 
 console.log('');

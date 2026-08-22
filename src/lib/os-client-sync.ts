@@ -107,6 +107,10 @@ export const prescriptionFromOrder = (clientId: string, order: OrderForFicha, to
  * Devolve para a ficha do cliente o que a O.S. trouxe de novo e conta, em
  * português, o que foi gravado. Falha de permissão vira aviso: a O.S. já está
  * salva, e a vendedora precisa saber o que não subiu para a ficha.
+ *
+ * `previousOsNumber` é o número que a ordem tinha antes de ser renumerada: sem
+ * ele, corrigir o número da O.S. deixaria a receita antiga órfã na ficha e
+ * criaria uma segunda com o número novo.
  */
 export async function syncClientFromOrder(
   gateway: ClientFichaGateway,
@@ -114,6 +118,7 @@ export async function syncClientFromOrder(
   order: OrderForFicha,
   phoneDigits: string,
   today: string,
+  previousOsNumber?: number,
 ): Promise<string[]> {
   const done: string[] = [];
 
@@ -130,7 +135,10 @@ export async function syncClientFromOrder(
 
   const prescription = prescriptionFromOrder(clientId, order, today);
   if (prescription) {
-    const existing = await gateway.findOsPrescription(clientId, osPrescriptionPrefix(order.os_number));
+    let existing = await gateway.findOsPrescription(clientId, osPrescriptionPrefix(order.os_number));
+    if (!existing && previousOsNumber !== undefined && previousOsNumber !== order.os_number) {
+      existing = await gateway.findOsPrescription(clientId, osPrescriptionPrefix(previousOsNumber));
+    }
     const { error } = await gateway.writePrescription(existing?.id || null, prescription);
     done.push(error
       ? `(aviso: não deu para salvar o grau na ficha — ${error.message})`

@@ -86,6 +86,7 @@ const intOrNull = (value: string) => {
 
 
 interface OrderForm {
+  os_number: string;
   client_id: string;
   client_name: string;
   cpf: string; rg: string; phone: string;
@@ -100,6 +101,7 @@ interface OrderForm {
 const PAYMENT_OPTIONS = ['Dinheiro', 'PIX', 'Cartão de débito', 'Cartão de crédito', 'Crediário / parcelado', 'Outro'];
 
 const EMPTY_FORM: OrderForm = {
+  os_number: '',
   client_id: '', client_name: '', cpf: '', rg: '', phone: '',
   product_type: '', frame_description: '', lens_description: '', laboratory: '', lab_sent_date: '', lab_due_date: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
@@ -204,6 +206,13 @@ export default function OrdensPage() {
     });
   }, [orders, search, statusFilter]);
 
+  // Sugestão para a próxima O.S.: um a mais que o maior número já gravado. É só
+  // um chute educado — quem manda é o bloco da loja, e o banco recusa repetido.
+  const suggestedOsNumber = useMemo(() => {
+    const highest = orders.reduce((max, order) => Math.max(max, Number(order.os_number) || 0), 0);
+    return String(highest + 1);
+  }, [orders]);
+
   const balance = (total: string, down: string) => (numberOrNull(total) || 0) - (numberOrNull(down) || 0);
 
   // Última receita da ficha: é o grau que o cliente que volta já tinha.
@@ -294,12 +303,13 @@ export default function OrdensPage() {
     setNotice(`Backup de ${orders.length} ordem(ns) baixado. Guarde o arquivo em local seguro.`);
   };
 
-  const openNew = () => { setEditingId(null); setForm(EMPTY_FORM); setClientTerm(''); setClientHint(''); setLabOther(false); setError(''); setFormOpen(true); };
+  const openNew = () => { setEditingId(null); setForm({ ...EMPTY_FORM, os_number: suggestedOsNumber }); setClientTerm(''); setClientHint(''); setLabOther(false); setError(''); setFormOpen(true); };
 
   const openEdit = (order: ServiceOrder) => {
     const s = (value: number | null) => (value === null || value === undefined ? '' : String(value));
     setEditingId(order.id);
     setForm({
+      os_number: String(order.os_number),
       client_id: order.client_id || '', client_name: order.client_name,
       cpf: order.cpf || '', rg: order.rg || '', phone: order.phone || '',
       product_type: order.product_type || '', frame_description: order.frame_description || '', lens_description: order.lens_description || '',
@@ -322,6 +332,21 @@ export default function OrdensPage() {
     setError('');
     const name = form.client_name.trim();
     if (!name) return setError('Informe o nome do cliente.');
+    // Número da loja: inteiro positivo e que ainda não esteja em uso. O banco
+    // também barra repetido, mas o aviso daqui diz de quem é o número.
+    const typedNumber = form.os_number.trim();
+    if (typedNumber !== '' && !/^\d{1,9}$/.test(typedNumber)) {
+      return setError('O número da O.S. deve ser só números (sem letras, ponto ou traço).');
+    }
+    if (typedNumber !== '' && Number(typedNumber) < 1) {
+      return setError('O número da O.S. tem que ser maior que zero.');
+    }
+    const taken = typedNumber !== ''
+      ? orders.find((order) => String(order.os_number) === typedNumber && order.id !== editingId)
+      : undefined;
+    if (taken) {
+      return setError(`O número ${typedNumber} já é da O.S. de ${taken.client_name}. Use outro número.`);
+    }
     // O banco recusa entrada maior que o total (constraint). Avisa antes de tentar gravar.
     if ((numberOrNull(form.down_payment) || 0) > (numberOrNull(form.total) || 0)) {
       return setError('A entrada não pode ser maior que o valor total. Confira os dois campos.');
@@ -355,9 +380,14 @@ export default function OrdensPage() {
       }
     }
 
+    // Guardado antes da gravação: é por ele que a receita da ficha é encontrada
+    // quando a O.S. é renumerada.
+    const previousOsNumber = editingId ? orders.find((order) => order.id === editingId)?.os_number : undefined;
     const total = numberOrNull(form.total) || 0;
     const vendedorId = form.vendedor_id || currentUserId || null;
     const payload = {
+      // Em branco, o banco numera sozinho e o campo nem vai no envio.
+      ...(typedNumber !== '' ? { os_number: Number(typedNumber) } : {}),
       client_id: clientId,
       client_name: name,
       cpf: form.cpf.trim() || null, rg: form.rg.trim() || null, phone: phoneDigits || null,
@@ -384,9 +414,15 @@ export default function OrdensPage() {
     const { result, droppedColumns } = await writeDroppingMissingColumns(write, payload);
     if (result.error || !result.data) {
       setSaving(false);
-      const msg = /row-level security|permission|jwt|401/i.test(result.error?.message || '')
+      const raw = result.error?.message || 'erro desconhecido';
+      // O banco é a palavra final sobre número repetido: outra pessoa pode ter
+      // gravado o mesmo número enquanto esta tela estava aberta.
+      if (/duplicate key|os_number_unique/i.test(raw)) {
+        return setError(`O número ${typedNumber} acabou de ser usado em outra O.S. Recarregue a lista e escolha outro.`);
+      }
+      const msg = /row-level security|permission|jwt|401/i.test(raw)
         ? 'você precisa estar logada para gravar. Faça login com sua conta.'
-        : (result.error?.message || 'erro desconhecido');
+        : raw;
       return setError(`Não foi possível salvar a O.S.: ${msg}`);
     }
     const order = result.data as ServiceOrder;
@@ -408,7 +444,7 @@ export default function OrdensPage() {
 
     // Devolve para a ficha do cliente tudo que a O.S. trouxe de novo.
     const clientSync = clientId
-      ? await syncClientFromOrder(fichaGateway, clientId, order, phoneDigits, getTodayISO())
+      ? await syncClientFromOrder(fichaGateway, clientId, order, phoneDigits, getTodayISO(), previousOsNumber)
       : [];
 
     setSaving(false);
@@ -616,6 +652,25 @@ export default function OrdensPage() {
           <form className={styles.modal} onSubmit={save} onMouseDown={(event) => event.stopPropagation()}>
             <div className={styles.modalHeader}><div><span className={styles.eyebrow}>{editingId ? 'Editar O.S.' : 'Nova ordem de serviço'}</span><h2>{editingId ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço'}</h2></div><button type="button" onClick={() => setFormOpen(false)}>×</button></div>
             {error && <div className={styles.errorBanner}>{error}<button type="button" onClick={() => setError('')}>×</button></div>}
+
+            <section className={styles.formSection}>
+              <h3>Número da O.S.</h3>
+              <div className={styles.formGrid}>
+                <label>Nº da O.S.
+                  <input
+                    inputMode="numeric"
+                    maxLength={9}
+                    value={form.os_number}
+                    onChange={(event) => setForm({ ...form, os_number: event.target.value.replace(/\D/g, '') })}
+                    placeholder={suggestedOsNumber}
+                  />
+                </label>
+              </div>
+              <p className={styles.helper} style={{ marginTop: 10 }}>
+                Use o número do <strong>seu bloco de O.S.</strong> — é ele que fica valendo no sistema.
+                {editingId ? ' Trocar o número aqui renumera esta ordem.' : ` Sugestão: ${suggestedOsNumber}. Se deixar em branco, o sistema numera sozinho.`}
+              </p>
+            </section>
 
             <section className={styles.formSection}>
               <h3>Cliente</h3>

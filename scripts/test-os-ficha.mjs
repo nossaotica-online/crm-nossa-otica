@@ -103,7 +103,19 @@ const HOJE = '2026-08-22';
     JSON.stringify(state.prescriptions.map((item) => item.notes)));
 }
 
-// 4. Ficha que já tem dado não é atropelada pela O.S.
+// 4. Renumerar a O.S. (a loja usa o número do bloco dela) reaproveita a
+//    receita que já estava na ficha, em vez de deixar uma órfã e criar outra.
+{
+  const { gateway, state } = fakeFicha({ client: { ...FICHA_SO_NOME } });
+  await syncClientFromOrder(gateway, 'cliente-1', ORDEM, '64974003830', HOJE);
+  const renumerada = { ...ORDEM, os_number: 4071 };
+  await syncClientFromOrder(gateway, 'cliente-1', renumerada, '64974003830', HOJE, ORDEM.os_number);
+  check('renumerar não duplica a receita', state.prescriptions.length === 1, `obtido=${state.prescriptions.length}`);
+  check('receita passa a apontar para o número novo',
+    state.prescriptions[0].notes.startsWith('Receita da O.S. #4071.'), state.prescriptions[0].notes);
+}
+
+// 5. Ficha que já tem dado não é atropelada pela O.S.
 {
   const patch = clientPatchFromOrder(
     { cpf: '999.999.999-99', rg: null, whatsapp: '64999990000', secondary_phone: null },
@@ -116,7 +128,7 @@ const HOJE = '2026-08-22';
     patch.whatsapp === undefined && patch.secondary_phone === '64974003830', JSON.stringify(patch));
 }
 
-// 5. A altura de montagem chega na ficha junto com o grau.
+// 6. A altura de montagem chega na ficha junto com o grau.
 {
   const receita = prescriptionFromOrder('cliente-1', ORDEM, HOJE);
   check('altura da O.S. fica anotada na receita', receita.notes.includes('Altura: 21/21'), receita.notes);
@@ -131,7 +143,7 @@ const HOJE = '2026-08-22';
     prescriptionFromOrder('cliente-1', semNada, HOJE) === null);
 }
 
-// 6. DNP escrita de outros jeitos.
+// 7. DNP escrita de outros jeitos.
 {
   check('DNP "31 e 30" é entendida', parseDnp('31 e 30').right === 31 && parseDnp('31 e 30').left === 30);
   check('DNP "62" (total) não vira olho', parseDnp('62').right === null);
@@ -144,7 +156,7 @@ const HOJE = '2026-08-22';
     parseDnp('31,5/30,5').right === 31.5 && parseDnp('31,5/30,5').left === 30.5);
 }
 
-// 7. Sem permissão no banco, a O.S. já está salva: o erro vira aviso na tela.
+// 8. Sem permissão no banco, a O.S. já está salva: o erro vira aviso na tela.
 {
   const { gateway } = fakeFicha({ client: { ...FICHA_SO_NOME }, blocked: true });
   const avisos = await syncClientFromOrder(gateway, 'cliente-1', ORDEM, '64974003830', HOJE);
