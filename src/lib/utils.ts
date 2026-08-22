@@ -147,3 +147,22 @@ export function addMinutes(time: string, minutes: number): string {
   const newM = totalMins % 60;
   return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Número digitado no formulário, em português e no teclado do celular.
+ *
+ * O grau precisa do sinal ("+1,50", "-0,75"), então esses campos usam o teclado
+ * normal — e o que chega vem sujo: espaço sobrando, vírgula ou ponto, o "+" que
+ * o Number já entende, e o traço longo (− – —) que alguns teclados mandam no
+ * lugar do menos. Devolve null para campo vazio e para o que não é número —
+ * quem chama decide se isso é "não informado" ou erro para mostrar na tela.
+ */
+export function parseDecimalInput(value: string): number | null {
+  const cleaned = value
+    .replace(/\s+/g, '')
+    .replace(/[−–—]/g, '-')
+    .replace(',', '.');
+  if (cleaned === '') return null;
+  const parsed = Number(cleaned);
+  return Number.isNaN(parsed) ? null : parsed;
+}

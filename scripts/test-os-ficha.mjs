@@ -15,6 +15,7 @@ const {
   prescriptionFromOrder,
   parseDnp,
 } = await import('../src/lib/os-client-sync.ts');
+const { parseDecimalInput } = await import('../src/lib/utils.ts');
 
 let failures = 0;
 const check = (name, condition, detail = '') => {
@@ -156,7 +157,20 @@ const HOJE = '2026-08-22';
     parseDnp('31,5/30,5').right === 31.5 && parseDnp('31,5/30,5').left === 30.5);
 }
 
-// 8. Sem permissão no banco, a O.S. já está salva: o erro vira aviso na tela.
+// 8. Grau digitado no teclado normal do celular — o único que tem o "+".
+{
+  check('grau positivo com + é entendido', parseDecimalInput('+1,50') === 1.5);
+  check('grau negativo continua entendido', parseDecimalInput('-0,75') === -0.75);
+  check('ponto no lugar da vírgula é entendido', parseDecimalInput('+1.50') === 1.5);
+  check('espaço sobrando não atrapalha', parseDecimalInput(' + 2,00 ') === 2);
+  // Alguns teclados mandam o traço longo no lugar do menos.
+  check('traço longo vira menos', parseDecimalInput('\u22122,25') === -2.25);
+  check('campo vazio é "não informado"', parseDecimalInput('') === null && parseDecimalInput('   ') === null);
+  check('letra no campo não vira número (a tela avisa)', parseDecimalInput('abc') === null);
+  check('só o sinal não vira número', parseDecimalInput('+') === null);
+}
+
+// 9. Sem permissão no banco, a O.S. já está salva: o erro vira aviso na tela.
 {
   const { gateway } = fakeFicha({ client: { ...FICHA_SO_NOME }, blocked: true });
   const avisos = await syncClientFromOrder(gateway, 'cliente-1', ORDEM, '64974003830', HOJE);

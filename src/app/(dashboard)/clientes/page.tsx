@@ -16,7 +16,7 @@ import type {
   ServiceOrderStatus,
 } from '@/types/clients';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
-import { getTodayISO } from '@/lib/utils';
+import { getTodayISO, parseDecimalInput } from '@/lib/utils';
 import styles from './clientes.module.css';
 import { useConfirm } from '@/components/ConfirmDialog';
 
@@ -524,11 +524,19 @@ export default function ClientesPage() {
       prescriptionForm.oe_sphere, prescriptionForm.oe_cylinder, prescriptionForm.oe_axis, prescriptionForm.oe_addition,
     ];
     if (!gradeFields.some((value) => value !== '')) return setError('Informe pelo menos um valor de grau para OD ou OE.');
-    const numberOrNull = (value: string) => {
-      if (value.trim() === '') return null;
-      const parsed = Number(value.replace(',', '.'));
-      return Number.isNaN(parsed) ? null : parsed;
-    };
+    const numberOrNull = (value: string) => parseDecimalInput(value);
+    // Mesmo cuidado da O.S.: no teclado normal dá para digitar qualquer coisa,
+    // e grau que não é número não pode sumir calado.
+    const invalid = ([
+      ['esférico OD', prescriptionForm.od_sphere], ['cilíndrico OD', prescriptionForm.od_cylinder],
+      ['eixo OD', prescriptionForm.od_axis], ['adição OD', prescriptionForm.od_addition],
+      ['esférico OE', prescriptionForm.oe_sphere], ['cilíndrico OE', prescriptionForm.oe_cylinder],
+      ['eixo OE', prescriptionForm.oe_axis], ['adição OE', prescriptionForm.oe_addition],
+      ['DNP direita', prescriptionForm.dnp_right], ['DNP esquerda', prescriptionForm.dnp_left],
+    ] as [string, string][]).find(([, value]) => value.trim() !== '' && numberOrNull(value) === null);
+    if (invalid) {
+      return setError(`Confira o ${invalid[0]}: use só números, vírgula e o sinal + ou −. Ex: +1,50 ou -0,75.`);
+    }
     const intOrNull = (value: string) => {
       const parsed = numberOrNull(value);
       return parsed === null ? null : Math.round(parsed);
@@ -857,20 +865,20 @@ export default function ClientesPage() {
                 <div><b></b><b>Esférico</b><b>Cilíndrico</b><b>Eixo</b><b>Adição</b></div>
                 <div>
                   <strong>OD</strong>
-                  <input inputMode="decimal" value={prescriptionForm.od_sphere} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_sphere: event.target.value })} placeholder="0,00" />
-                  <input inputMode="decimal" value={prescriptionForm.od_cylinder} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_cylinder: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={prescriptionForm.od_sphere} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_sphere: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={prescriptionForm.od_cylinder} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_cylinder: event.target.value })} placeholder="0,00" />
                   <input inputMode="numeric" value={prescriptionForm.od_axis} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_axis: event.target.value })} placeholder="0-180" />
-                  <input inputMode="decimal" value={prescriptionForm.od_addition} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_addition: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={prescriptionForm.od_addition} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, od_addition: event.target.value })} placeholder="0,00" />
                 </div>
                 <div>
                   <strong>OE</strong>
-                  <input inputMode="decimal" value={prescriptionForm.oe_sphere} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_sphere: event.target.value })} placeholder="0,00" />
-                  <input inputMode="decimal" value={prescriptionForm.oe_cylinder} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_cylinder: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={prescriptionForm.oe_sphere} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_sphere: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={prescriptionForm.oe_cylinder} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_cylinder: event.target.value })} placeholder="0,00" />
                   <input inputMode="numeric" value={prescriptionForm.oe_axis} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_axis: event.target.value })} placeholder="0-180" />
-                  <input inputMode="decimal" value={prescriptionForm.oe_addition} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_addition: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={prescriptionForm.oe_addition} onChange={(event) => setPrescriptionForm({ ...prescriptionForm, oe_addition: event.target.value })} placeholder="0,00" />
                 </div>
               </div>
-              <p className={styles.helper}>Preencha ao menos um valor de OD ou OE. Pode usar vírgula ou ponto (ex: -1,25).</p>
+              <p className={styles.helper}>Preencha ao menos um valor de OD ou OE. Grau positivo leva o <strong>+</strong> na frente (ex: +1,50); negativo, o <strong>-</strong> (ex: -1,25). Pode usar vírgula ou ponto.</p>
             </section>
 
             <section className={styles.formSection}>

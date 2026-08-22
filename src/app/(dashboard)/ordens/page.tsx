@@ -6,7 +6,7 @@ import { safeWhatsAppUrl } from '@/lib/security';
 import type { ClientPrescription, ClientRecord, ServiceOrder, ServiceOrderStatus } from '@/types/clients';
 import type { Profile } from '@/types';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
-import { getTodayISO } from '@/lib/utils';
+import { getTodayISO, parseDecimalInput } from '@/lib/utils';
 import styles from '../clientes/clientes.module.css';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { writeDroppingMissingColumns, missingColumnsNotice } from '@/lib/optional-columns';
@@ -61,11 +61,7 @@ const formatPhone = (value: string | null) => {
   return value || '';
 };
 const normalize = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('pt-BR');
-const numberOrNull = (value: string) => {
-  if (value.trim() === '') return null;
-  const parsed = Number(value.replace(',', '.'));
-  return Number.isNaN(parsed) ? null : parsed;
-};
+const numberOrNull = (value: string) => parseDecimalInput(value);
 // Quantos dias o pedido fica no laboratório: do envio até o prazo de entrega dele.
 const daysInLab = (sent: string | null | undefined, due: string | null | undefined) => {
   if (!sent || !due) return null;
@@ -383,6 +379,19 @@ export default function OrdensPage() {
     // Guardado antes da gravação: é por ele que a receita da ficha é encontrada
     // quando a O.S. é renumerada.
     const previousOsNumber = editingId ? orders.find((order) => order.id === editingId)?.os_number : undefined;
+    // Com o teclado normal (é o único que tem o "+" do grau positivo) dá para
+    // digitar qualquer coisa no campo. Antes o que não fosse número virava
+    // null e o grau sumia sem ninguém perceber.
+    const numericFields: [string, string][] = [
+      ['esférico OD', form.od_sphere], ['cilíndrico OD', form.od_cylinder], ['eixo OD', form.od_axis], ['adição OD', form.od_addition],
+      ['esférico OE', form.oe_sphere], ['cilíndrico OE', form.oe_cylinder], ['eixo OE', form.oe_axis], ['adição OE', form.oe_addition],
+      ['valor total', form.total], ['entrada', form.down_payment],
+    ];
+    const invalid = numericFields.find(([, value]) => value.trim() !== '' && numberOrNull(value) === null);
+    if (invalid) {
+      return setError(`Confira o ${invalid[0]}: use só números, vírgula e o sinal + ou −. Ex: +1,50 ou -0,75.`);
+    }
+
     const total = numberOrNull(form.total) || 0;
     const vendedorId = form.vendedor_id || currentUserId || null;
     const payload = {
@@ -746,19 +755,20 @@ export default function OrdensPage() {
                 <div><b></b><b>Esférico</b><b>Cilíndrico</b><b>Eixo</b><b>Adição</b></div>
                 <div>
                   <strong>OD</strong>
-                  <input inputMode="decimal" value={form.od_sphere} onChange={(event) => setForm({ ...form, od_sphere: event.target.value })} placeholder="0,00" />
-                  <input inputMode="decimal" value={form.od_cylinder} onChange={(event) => setForm({ ...form, od_cylinder: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={form.od_sphere} onChange={(event) => setForm({ ...form, od_sphere: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={form.od_cylinder} onChange={(event) => setForm({ ...form, od_cylinder: event.target.value })} placeholder="0,00" />
                   <input inputMode="numeric" value={form.od_axis} onChange={(event) => setForm({ ...form, od_axis: event.target.value })} placeholder="0-180" />
-                  <input inputMode="decimal" value={form.od_addition} onChange={(event) => setForm({ ...form, od_addition: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={form.od_addition} onChange={(event) => setForm({ ...form, od_addition: event.target.value })} placeholder="0,00" />
                 </div>
                 <div>
                   <strong>OE</strong>
-                  <input inputMode="decimal" value={form.oe_sphere} onChange={(event) => setForm({ ...form, oe_sphere: event.target.value })} placeholder="0,00" />
-                  <input inputMode="decimal" value={form.oe_cylinder} onChange={(event) => setForm({ ...form, oe_cylinder: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={form.oe_sphere} onChange={(event) => setForm({ ...form, oe_sphere: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={form.oe_cylinder} onChange={(event) => setForm({ ...form, oe_cylinder: event.target.value })} placeholder="0,00" />
                   <input inputMode="numeric" value={form.oe_axis} onChange={(event) => setForm({ ...form, oe_axis: event.target.value })} placeholder="0-180" />
-                  <input inputMode="decimal" value={form.oe_addition} onChange={(event) => setForm({ ...form, oe_addition: event.target.value })} placeholder="0,00" />
+                  <input inputMode="text" value={form.oe_addition} onChange={(event) => setForm({ ...form, oe_addition: event.target.value })} placeholder="0,00" />
                 </div>
               </div>
+              <p className={styles.helper} style={{ marginTop: 10 }}>Grau positivo: escreva o <strong>+</strong> na frente (ex: +1,50). Negativo, o <strong>-</strong> (ex: -0,75).</p>
               <div className={styles.formGrid} style={{ marginTop: 12 }}>
                 <label>DNP<input maxLength={60} value={form.dnp} onChange={(event) => setForm({ ...form, dnp: event.target.value })} placeholder="Ex: 31/31" /></label>
                 <label>Altura (montagem)<input maxLength={60} value={form.altura} onChange={(event) => setForm({ ...form, altura: event.target.value })} placeholder="Ex: 21/21" /></label>
