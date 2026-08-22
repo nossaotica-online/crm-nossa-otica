@@ -12,6 +12,8 @@ import type {
   OpticalProduct,
   PrescriptionFormValues,
   RelationshipType,
+  ServiceOrder,
+  ServiceOrderStatus,
 } from '@/types/clients';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import { getTodayISO } from '@/lib/utils';
@@ -62,6 +64,17 @@ const emptyPrescriptionForm = (): PrescriptionFormValues => ({
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
   dnp_right: '', dnp_left: '', notes: '',
 });
+
+const ORDER_STATUS: Record<ServiceOrderStatus, { label: string; color: string; bg: string }> = {
+  aberta: { label: 'Aberta', color: '#cbd5e1', bg: 'rgba(148,163,184,.15)' },
+  em_producao: { label: 'Em produção', color: '#f59e0b', bg: 'rgba(245,158,11,.15)' },
+  pronta: { label: 'Pronta', color: '#38bdf8', bg: 'rgba(56,189,248,.15)' },
+  entregue: { label: 'Entregue', color: '#34d399', bg: 'rgba(52,211,153,.15)' },
+  cancelada: { label: 'Cancelada', color: '#f87171', bg: 'rgba(248,113,113,.15)' },
+};
+
+const brl = (value: number | null | undefined) =>
+  (value === null || value === undefined ? 0 : value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
@@ -178,6 +191,7 @@ export default function ClientesPage() {
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [relationships, setRelationships] = useState<FamilyRelationship[]>([]);
   const [prescriptions, setPrescriptions] = useState<ClientPrescription[]>([]);
+  const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -200,11 +214,12 @@ export default function ClientesPage() {
   const loadData = async () => {
     setLoading(true);
     setError('');
-    const [clientsResult, groupsResult, relationshipsResult, prescriptionsResult] = await Promise.all([
+    const [clientsResult, groupsResult, relationshipsResult, prescriptionsResult, ordersResult] = await Promise.all([
       supabase.from('clients').select('*').order('created_at', { ascending: false }),
       supabase.from('family_groups').select('*').order('name'),
       supabase.from('family_relationships').select('*').order('created_at'),
       supabase.from('client_prescriptions').select('*').order('prescription_date', { ascending: false }),
+      supabase.from('service_orders').select('*').order('created_at', { ascending: false }),
     ]);
 
     const firstError = clientsResult.error || groupsResult.error || relationshipsResult.error || prescriptionsResult.error;
@@ -218,6 +233,9 @@ export default function ClientesPage() {
       setRelationships((relationshipsResult.data || []) as FamilyRelationship[]);
       setPrescriptions((prescriptionsResult.data || []) as ClientPrescription[]);
     }
+    // As ordens são um extrato dentro da ficha: se o módulo O.S. ainda não
+    // estiver no banco, a tela de clientes continua abrindo normalmente.
+    setOrders((ordersResult.data || []) as ServiceOrder[]);
     setLoading(false);
   };
 
@@ -251,12 +269,13 @@ export default function ClientesPage() {
       const haystack = normalizeSearch([
         client.name, client.whatsapp, formatPhone(client.whatsapp), client.secondary_phone, formatPhone(client.secondary_phone), client.notes,
         familyNames, referrer, group, sourceLabel(client.source), client.source_details,
-        client.product_interests.map(productLabel).join(' '), searchableDate(client.created_at),
+        client.product_interests.map(productLabel).join(' '), searchableDate(client.created_at), client.cpf, client.rg,
+        orders.filter((order) => order.client_id === client.id).map((order) => `os ${order.os_number} ${order.product_type || ''} ${order.laboratory || ''}`).join(' '),
         searchableDate(client.birth_date), clientPrescriptions.map((item) => `${searchableDate(item.prescription_date)} ${item.doctor_name || ''}`).join(' '),
       ].filter(Boolean).join(' '));
       return term.split(/\s+/).every((token) => haystack.includes(token));
     });
-  }, [clients, groups, relationships, prescriptions, search, showArchived, letterFilter]);
+  }, [clients, groups, relationships, prescriptions, orders, search, showArchived, letterFilter]);
 
   useEffect(() => { setPage(1); }, [search, showArchived, letterFilter]);
   const pageCount = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
@@ -562,6 +581,15 @@ export default function ClientesPage() {
   const selectedPrescriptions = selectedClient
     ? prescriptions.filter((prescription) => prescription.client_id === selectedClient.id)
     : [];
+  // Ordens do cliente: as vinculadas pelo id e também as antigas, que só
+  // guardavam o nome digitado na O.S.
+  const selectedOrders = selectedClient
+    ? orders.filter((order) => order.client_id === selectedClient.id
+        || (!order.client_id && normalizeSearch(order.client_name) === normalizeSearch(selectedClient.name)))
+    : [];
+  const totalCompras = selectedOrders
+    .filter((order) => order.status !== 'cancelada')
+    .reduce((sum, order) => sum + Number(order.total || 0), 0);
   const otherClients = clients.filter((client) => client.id !== editingId);
 
   return (
@@ -738,6 +766,8 @@ export default function ClientesPage() {
             <section className={styles.profileGrid}>
               <div><span>WhatsApp</span><strong>{selectedClient.whatsapp ? formatPhone(selectedClient.whatsapp) : 'Não tem (usar recado)'}</strong></div>
               <div><span>Telefone secundário / recado</span><strong>{selectedClient.secondary_phone ? formatPhone(selectedClient.secondary_phone) : 'Não informado'}</strong></div>
+              <div><span>CPF</span><strong>{selectedClient.cpf || 'Não informado'}</strong></div>
+              <div><span>RG</span><strong>{selectedClient.rg || 'Não informado'}</strong></div>
               <div><span>Nascimento</span><strong>{formatDate(selectedClient.birth_date)}</strong></div>
               <div><span>E-mail</span><strong>{selectedClient.email || 'Não informado'}</strong></div>
               <div><span>Cadastro</span><strong>{formatDate(selectedClient.created_at)}</strong></div>
@@ -746,6 +776,41 @@ export default function ClientesPage() {
               <div><span>Produtos de interesse</span><strong>{selectedClient.product_interests.length ? selectedClient.product_interests.map(productLabel).join(', ') : 'Não informado'}</strong></div>
               <div className={styles.fullField}><span>Indicado por</span>{clientById(selectedClient.referred_by_client_id) ? <button className={styles.profileLink} onClick={() => setViewClientId(selectedClient.referred_by_client_id)}>{clientById(selectedClient.referred_by_client_id)?.name}</button> : <strong>Sem indicação</strong>}</div>
               <div className={styles.fullField}><span>Observações</span><p>{selectedClient.notes || 'Sem observações.'}</p></div>
+            </section>
+
+            <section className={styles.detailSection}>
+              <div className={styles.sectionHeading}>
+                <h3>Ordens de serviço (compras) <b>{selectedOrders.length}</b></h3>
+                <span className={styles.helper}>Já comprou {brl(totalCompras)}</span>
+              </div>
+              {selectedOrders.length === 0 ? (
+                <p className={styles.helper}>Nenhuma O.S. para este cliente ainda. Toda ordem criada na aba <strong>Ordens de Serviço</strong> aparece aqui, com produto, valores e status.</p>
+              ) : (
+                <div className={styles.prescriptionList}>
+                  {selectedOrders.map((order) => {
+                    const info = ORDER_STATUS[order.status] || ORDER_STATUS.aberta;
+                    const saldo = Number(order.total || 0) - Number(order.down_payment || 0);
+                    return (
+                      <article key={order.id} className={styles.prescriptionCard}>
+                        <header>
+                          <div>
+                            <strong>O.S. #{order.os_number} · {formatDate(order.created_at)}</strong>
+                            <span>{[order.product_type, order.frame_description, order.lens_description].filter(Boolean).join(' · ') || 'Produto não informado'}</span>
+                          </div>
+                          <span style={{ padding: '5px 11px', borderRadius: 999, color: info.color, background: info.bg, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{info.label}</span>
+                        </header>
+                        <footer>
+                          Total {brl(order.total)} · Entrada {brl(order.down_payment)} · Saldo {brl(saldo)}
+                          {order.payment_method ? ` · ${order.payment_method}` : ''}
+                          {order.laboratory ? ` · Laboratório: ${order.laboratory}` : ''}
+                          {order.delivery_date ? ` · Entrega: ${formatDate(order.delivery_date)}` : ''}
+                          {order.notes ? ` · ${order.notes}` : ''}
+                        </footer>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
             <section className={styles.detailSection}><div className={styles.sectionHeading}><h3>Histórico de receitas e graus <b>{selectedPrescriptions.length}</b></h3><button onClick={openNewPrescription}>+ Nova receita</button></div>{selectedPrescriptions.length === 0 ? <p className={styles.helper}>Nenhuma receita cadastrada.</p> : <div className={styles.prescriptionList}>{selectedPrescriptions.map((prescription) => <article key={prescription.id} className={styles.prescriptionCard}><header><div><strong>{formatDate(prescription.prescription_date)}</strong><span>{prescription.doctor_name || 'Médico não informado'}{prescription.doctor_crm ? ` · ${prescription.doctor_crm}` : ''}</span></div><div><button onClick={() => openEditPrescription(prescription)}>Editar</button><button className={styles.removeLink} onClick={() => void deletePrescription(prescription)}>Excluir</button></div></header><div className={styles.gradeTable}><div><b>Olho</b><b>Esférico</b><b>Cilíndrico</b><b>Eixo</b><b>Adição</b></div><div><strong>OD</strong><span>{prescription.od_sphere ?? '—'}</span><span>{prescription.od_cylinder ?? '—'}</span><span>{prescription.od_axis ?? '—'}</span><span>{prescription.od_addition ?? '—'}</span></div><div><strong>OE</strong><span>{prescription.oe_sphere ?? '—'}</span><span>{prescription.oe_cylinder ?? '—'}</span><span>{prescription.oe_axis ?? '—'}</span><span>{prescription.oe_addition ?? '—'}</span></div></div><footer>DNP: OD {prescription.dnp_right ?? '—'} mm · OE {prescription.dnp_left ?? '—'} mm{prescription.notes ? ` · ${prescription.notes}` : ''}</footer></article>)}</div>}</section>

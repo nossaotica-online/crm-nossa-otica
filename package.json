@@ -10,6 +10,7 @@
     "security:test-anon": "node scripts/test-anon-rls.mjs",
     "security:test-permissions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-permissions.mjs",
     "test:os-laboratorio": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-lab-fallback.mjs",
+    "test:os-ficha": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-os-ficha.mjs",
     "test:equipe-erros": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test-team-errors.mjs"
   },
   "dependencies": {

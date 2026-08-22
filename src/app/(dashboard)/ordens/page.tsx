@@ -3,13 +3,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { safeWhatsAppUrl } from '@/lib/security';
-import type { ClientRecord, ServiceOrder, ServiceOrderStatus } from '@/types/clients';
+import type { ClientPrescription, ClientRecord, ServiceOrder, ServiceOrderStatus } from '@/types/clients';
 import type { Profile } from '@/types';
 import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import { getTodayISO } from '@/lib/utils';
 import styles from '../clientes/clientes.module.css';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { writeDroppingMissingLabColumns, missingLabColumnsNotice } from '@/lib/lab-columns';
+import { syncClientFromOrder, type ClientFichaGateway } from '@/lib/os-client-sync';
 
 const PRODUCT_OPTIONS = [
   'Óculos completo', 'Só as lentes', 'Só a armação', 'Óculos de sol', 'Lente de contato', 'Manutenção / conserto',
@@ -111,6 +112,7 @@ export default function OrdensPage() {
   const { confirm, confirmDialog } = useConfirm();
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [prescriptions, setPrescriptions] = useState<ClientPrescription[]>([]);
   const [team, setTeam] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -122,6 +124,9 @@ export default function OrdensPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<OrderForm>(EMPTY_FORM);
   const [clientTerm, setClientTerm] = useState('');
+  // O que veio da ficha do cliente ao vincular — evita a impressão de que
+  // "só veio o nome" quando o cadastro dele ainda não tem CPF, RG nem receita.
+  const [clientHint, setClientHint] = useState('');
   const [labOther, setLabOther] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -134,11 +139,12 @@ export default function OrdensPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const [ordersRes, clientsRes, teamRes, salesRes] = await Promise.all([
+    const [ordersRes, clientsRes, teamRes, salesRes, prescriptionsRes] = await Promise.all([
       supabase.from('service_orders').select('*').order('created_at', { ascending: false }),
       supabase.from('clients').select('*').eq('status', 'active').order('name'),
       supabase.from('profiles').select('*'),
       supabase.from('sales').select('service_order_id, status, valor').not('service_order_id', 'is', null),
+      supabase.from('client_prescriptions').select('*').order('prescription_date', { ascending: false }),
     ]);
     const err = ordersRes.error || clientsRes.error;
     if (err) {
@@ -150,6 +156,9 @@ export default function OrdensPage() {
       setClients((clientsRes.data || []) as ClientRecord[]);
       setTeam((teamRes.data || []) as Profile[]);
     }
+    // Receita é só para adiantar o grau do cliente que volta: se não carregar,
+    // a O.S. continua funcionando com os campos em branco.
+    setPrescriptions((prescriptionsRes.data || []) as ClientPrescription[]);
     if (salesRes.error) {
       setSalesByOrder({});
       setSyncError(/service_order_id/.test(salesRes.error.message)
@@ -197,18 +206,57 @@ export default function OrdensPage() {
 
   const balance = (total: string, down: string) => (numberOrNull(total) || 0) - (numberOrNull(down) || 0);
 
+  // Última receita da ficha: é o grau que o cliente que volta já tinha.
+  const lastPrescription = (clientId: string) => prescriptions
+    .filter((item) => item.client_id === clientId)
+    .sort((a, b) => (a.prescription_date < b.prescription_date ? 1 : -1))[0] || null;
+
   const pickClient = (id: string) => {
     const client = clients.find((c) => c.id === id);
-    if (!client) { setForm((f) => ({ ...f, client_id: '', client_name: '' })); return; }
+    if (!client) { setForm((f) => ({ ...f, client_id: '', client_name: '' })); setClientHint(''); return; }
+    const last = lastPrescription(client.id);
+    const s = (value: number | null | undefined) => (value === null || value === undefined ? '' : String(value));
     setForm((f) => ({
       ...f,
       client_id: client.id,
       client_name: client.name,
       cpf: client.cpf || f.cpf,
       rg: client.rg || f.rg,
-      phone: formatPhone(client.whatsapp || client.secondary_phone),
+      phone: formatPhone(client.whatsapp || client.secondary_phone) || f.phone,
+      // Grau só entra em campo vazio: o que você já digitou nesta O.S. manda.
+      od_sphere: f.od_sphere || s(last?.od_sphere), od_cylinder: f.od_cylinder || s(last?.od_cylinder),
+      od_axis: f.od_axis || s(last?.od_axis), od_addition: f.od_addition || s(last?.od_addition),
+      oe_sphere: f.oe_sphere || s(last?.oe_sphere), oe_cylinder: f.oe_cylinder || s(last?.oe_cylinder),
+      oe_axis: f.oe_axis || s(last?.oe_axis), oe_addition: f.oe_addition || s(last?.oe_addition),
+      dnp: f.dnp || (last && (last.dnp_right !== null || last.dnp_left !== null) ? `${last.dnp_right ?? '-'}/${last.dnp_left ?? '-'}` : ''),
     }));
+    const trazidos = [client.cpf && 'CPF', client.rg && 'RG', (client.whatsapp || client.secondary_phone) && 'telefone'].filter(Boolean);
+    setClientHint([
+      trazidos.length > 0
+        ? `Peguei da ficha de ${client.name}: ${trazidos.join(', ')}.`
+        : `A ficha de ${client.name} ainda só tem o nome — o CPF, o RG e o telefone que você digitar aqui vão ser gravados no cadastro dele.`,
+      last ? `Grau preenchido com a receita de ${formatDate(last.prescription_date)} — se ele trouxe receita nova, corrija abaixo.` : null,
+    ].filter(Boolean).join(' '));
     setClientTerm('');
+  };
+
+  // A O.S. alimenta a ficha do cliente. Sem isso o cadastro fica só com o nome:
+  // o que a vendedora digita na ordem (CPF, RG, telefone, grau) morre na O.S. e
+  // a próxima compra da mesma pessoa começa do zero de novo.
+  const fichaGateway: ClientFichaGateway = {
+    findClient: async (clientId) => {
+      const { data } = await supabase.from('clients').select('*').eq('id', clientId).single();
+      return (data as ClientRecord | null) || null;
+    },
+    updateClient: (clientId, patch) => supabase.from('clients').update(patch).eq('id', clientId),
+    findOsPrescription: async (clientId, notesPrefix) => {
+      const { data } = await supabase.from('client_prescriptions')
+        .select('id').eq('client_id', clientId).like('notes', `${notesPrefix}%`).limit(1);
+      return ((data || [])[0] as { id: string } | undefined) || null;
+    },
+    writePrescription: (existingId, payload) => (existingId
+      ? supabase.from('client_prescriptions').update(payload).eq('id', existingId)
+      : supabase.from('client_prescriptions').insert(payload)),
   };
 
   const exportOrders = () => {
@@ -245,7 +293,7 @@ export default function OrdensPage() {
     setNotice(`Backup de ${orders.length} ordem(ns) baixado. Guarde o arquivo em local seguro.`);
   };
 
-  const openNew = () => { setEditingId(null); setForm(EMPTY_FORM); setClientTerm(''); setLabOther(false); setError(''); setFormOpen(true); };
+  const openNew = () => { setEditingId(null); setForm(EMPTY_FORM); setClientTerm(''); setClientHint(''); setLabOther(false); setError(''); setFormOpen(true); };
 
   const openEdit = (order: ServiceOrder) => {
     const s = (value: number | null) => (value === null || value === undefined ? '' : String(value));
@@ -262,6 +310,7 @@ export default function OrdensPage() {
       status: order.status, delivery_date: order.delivery_date || '', notes: order.notes || '',
     });
     setClientTerm('');
+    setClientHint('');
     setLabOther(Boolean(order.laboratory) && !LAB_OPTIONS.includes(order.laboratory || ''));
     setError('');
     setFormOpen(true);
@@ -355,11 +404,18 @@ export default function OrdensPage() {
       notas: `Gerado automaticamente pela O.S. #${order.os_number}.`,
     }, { onConflict: 'service_order_id' });
 
+    // Devolve para a ficha do cliente tudo que a O.S. trouxe de novo.
+    const clientSync = clientId
+      ? await syncClientFromOrder(fichaGateway, clientId, order, phoneDigits, getTodayISO())
+      : [];
+
     setSaving(false);
     setFormOpen(false);
+    setClientHint('');
     setNotice([
       editingId ? 'Ordem atualizada.' : `O.S. #${order.os_number} criada`,
       !editingId && createdClient ? 'e cliente cadastrado! Complete a ficha dele (indicação, família, observações) na aba Clientes.' : null,
+      ...clientSync,
       saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
       saleError ? `(aviso: não foi possível sincronizar com Orçamentos — ${saleError.message})` : null,
       missingLabColumnsNotice(droppedColumns) || null,
@@ -561,15 +617,18 @@ export default function OrdensPage() {
 
             <section className={styles.formSection}>
               <h3>Cliente</h3>
-              <p className={styles.helper} style={{ marginBottom: 12 }}>Preencha os dados do cliente aqui. Se for cliente novo, ele é <strong>cadastrado automaticamente</strong> ao criar a O.S. — depois você completa a ficha (indicação, família, observações) na aba Clientes.</p>
+              <p className={styles.helper} style={{ marginBottom: 12 }}>Preencha os dados do cliente aqui. Se for cliente novo, ele é <strong>cadastrado automaticamente</strong> ao criar a O.S. Se já for cadastrado, o que você preencher aqui (CPF, RG, telefone e o grau) <strong>entra na ficha dele</strong> — o resto (indicação, família, observações) você completa na aba Clientes.</p>
               <div className={styles.formGrid}>
                 <label className={styles.fullField}>Nome do cliente *<input required maxLength={160} value={form.client_name} onChange={(event) => setForm({ ...form, client_name: event.target.value })} placeholder="Nome completo" /></label>
                 <label>Telefone / WhatsApp<input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: formatPhone(event.target.value) })} placeholder="(62) 99999-9999" /></label>
                 <label>CPF<input value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} placeholder="000.000.000-00" /></label>
                 <label>RG<input value={form.rg} onChange={(event) => setForm({ ...form, rg: event.target.value })} /></label>
               </div>
+              {clientHint && (
+                <p className={styles.helper} style={{ marginTop: 10, color: '#c084fc', fontWeight: 700, lineHeight: 1.5 }}>ℹ {clientHint}</p>
+              )}
               {form.client_id ? (
-                <p className={styles.helper} style={{ marginTop: 10 }}>✓ Ligado a um cliente já cadastrado. <button type="button" onClick={() => setForm((f) => ({ ...f, client_id: '' }))} style={{ color: 'var(--accent-primary)', fontWeight: 800, background: 'none', border: 0, cursor: 'pointer' }}>Desvincular</button></p>
+                <p className={styles.helper} style={{ marginTop: 10 }}>✓ Ligado a um cliente já cadastrado. <button type="button" onClick={() => { setForm((f) => ({ ...f, client_id: '' })); setClientHint(''); }} style={{ color: 'var(--accent-primary)', fontWeight: 800, background: 'none', border: 0, cursor: 'pointer' }}>Desvincular</button></p>
               ) : !editingId ? (
                 <details style={{ marginTop: 10 }}>
                   <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12 }}>Esse cliente já é cadastrado? Buscar para não duplicar</summary>

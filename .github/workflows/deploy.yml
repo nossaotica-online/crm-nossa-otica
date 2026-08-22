@@ -50,6 +50,8 @@ jobs:
         run: npm run test:os-laboratorio
       - name: Verify team access errors are explicit
         run: npm run test:equipe-erros
+      - name: Verify O.S. feeds the client record
+        run: npm run test:os-ficha
       - name: Build with Next.js
         run: npm run build
       - name: Setup Pages
