@@ -110,6 +110,8 @@ export interface ServiceOrder {
   oe_axis: number | null;
   oe_addition: number | null;
   dnp: string | null;
+  // Altura de montagem (migration 031). Pode não existir no banco ainda.
+  altura?: string | null;
   total: number;
   down_payment: number;
   payment_method: string | null;

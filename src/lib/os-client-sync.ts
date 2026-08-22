@@ -16,6 +16,7 @@ export interface OrderForFicha {
   rg: string | null;
   created_at?: string | null;
   dnp: string | null;
+  altura?: string | null;
   od_sphere: number | null;
   od_cylinder: number | null;
   od_axis: number | null;
@@ -80,8 +81,15 @@ export const prescriptionFromOrder = (clientId: string, order: OrderForFicha, to
     oe_sphere: order.oe_sphere, oe_cylinder: order.oe_cylinder, oe_axis: order.oe_axis, oe_addition: order.oe_addition,
   };
   const hasGrau = Object.values(grau).some((value) => value !== null && value !== undefined);
-  if (!hasGrau && !order.dnp) return null;
+  if (!hasGrau && !order.dnp && !order.altura) return null;
   const dnp = parseDnp(order.dnp);
+  // A receita da ficha não tem campo de altura, e a DNP que não dá para separar
+  // por olho também não cabe nos campos: as duas ficam escritas na observação,
+  // senão a medida se perderia no caminho da O.S. para a ficha.
+  const extras = [
+    dnp.right === null && order.dnp ? `DNP anotada: ${order.dnp}` : null,
+    order.altura ? `Altura: ${order.altura}` : null,
+  ].filter(Boolean);
   return {
     client_id: clientId,
     // A receita fica na data da O.S., não na data em que alguém editou a ordem.
@@ -89,8 +97,8 @@ export const prescriptionFromOrder = (clientId: string, order: OrderForFicha, to
     ...grau,
     dnp_right: dnp.right,
     dnp_left: dnp.left,
-    notes: dnp.right === null && order.dnp
-      ? `${osPrescriptionPrefix(order.os_number)} DNP anotada: ${order.dnp}`
+    notes: extras.length > 0
+      ? `${osPrescriptionPrefix(order.os_number)} ${extras.join(' · ')}`
       : osPrescriptionPrefix(order.os_number),
   };
 };

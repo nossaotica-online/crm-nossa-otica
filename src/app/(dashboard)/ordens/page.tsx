@@ -9,7 +9,7 @@ import { toCsv, downloadFile, todayStamp } from '@/lib/csv';
 import { getTodayISO } from '@/lib/utils';
 import styles from '../clientes/clientes.module.css';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { writeDroppingMissingLabColumns, missingLabColumnsNotice } from '@/lib/lab-columns';
+import { writeDroppingMissingColumns, missingColumnsNotice } from '@/lib/optional-columns';
 import { syncClientFromOrder, type ClientFichaGateway } from '@/lib/os-client-sync';
 
 const PRODUCT_OPTIONS = [
@@ -92,7 +92,7 @@ interface OrderForm {
   product_type: string; frame_description: string; lens_description: string; laboratory: string; lab_sent_date: string; lab_due_date: string;
   od_sphere: string; od_cylinder: string; od_axis: string; od_addition: string;
   oe_sphere: string; oe_cylinder: string; oe_axis: string; oe_addition: string;
-  dnp: string;
+  dnp: string; altura: string;
   total: string; down_payment: string; payment_method: string; vendedor_id: string;
   status: ServiceOrderStatus; delivery_date: string; notes: string;
 }
@@ -104,7 +104,7 @@ const EMPTY_FORM: OrderForm = {
   product_type: '', frame_description: '', lens_description: '', laboratory: '', lab_sent_date: '', lab_due_date: '',
   od_sphere: '', od_cylinder: '', od_axis: '', od_addition: '',
   oe_sphere: '', oe_cylinder: '', oe_axis: '', oe_addition: '',
-  dnp: '', total: '', down_payment: '', payment_method: '', vendedor_id: '', status: 'aberta', delivery_date: '', notes: '',
+  dnp: '', altura: '', total: '', down_payment: '', payment_method: '', vendedor_id: '', status: 'aberta', delivery_date: '', notes: '',
 };
 
 export default function OrdensPage() {
@@ -279,6 +279,7 @@ export default function OrdensPage() {
       { label: 'Grau OD', value: (o) => grau(o.od_sphere, o.od_cylinder, o.od_axis, o.od_addition) },
       { label: 'Grau OE', value: (o) => grau(o.oe_sphere, o.oe_cylinder, o.oe_axis, o.oe_addition) },
       { label: 'DNP', value: (o) => o.dnp },
+      { label: 'Altura', value: (o) => o.altura },
       { label: 'Total', value: (o) => brl(o.total) },
       { label: 'Entrada', value: (o) => brl(o.down_payment) },
       { label: 'Saldo', value: (o) => brl((o.total || 0) - (o.down_payment || 0)) },
@@ -305,7 +306,7 @@ export default function OrdensPage() {
       laboratory: order.laboratory || '', lab_sent_date: order.lab_sent_date || '', lab_due_date: order.lab_due_date || '',
       od_sphere: s(order.od_sphere), od_cylinder: s(order.od_cylinder), od_axis: s(order.od_axis), od_addition: s(order.od_addition),
       oe_sphere: s(order.oe_sphere), oe_cylinder: s(order.oe_cylinder), oe_axis: s(order.oe_axis), oe_addition: s(order.oe_addition),
-      dnp: order.dnp || '', total: s(order.total), down_payment: s(order.down_payment),
+      dnp: order.dnp || '', altura: order.altura || '', total: s(order.total), down_payment: s(order.down_payment),
       payment_method: order.payment_method || '', vendedor_id: order.vendedor_id || '',
       status: order.status, delivery_date: order.delivery_date || '', notes: order.notes || '',
     });
@@ -369,6 +370,7 @@ export default function OrdensPage() {
       od_sphere: numberOrNull(form.od_sphere), od_cylinder: numberOrNull(form.od_cylinder), od_axis: intOrNull(form.od_axis), od_addition: numberOrNull(form.od_addition),
       oe_sphere: numberOrNull(form.oe_sphere), oe_cylinder: numberOrNull(form.oe_cylinder), oe_axis: intOrNull(form.oe_axis), oe_addition: numberOrNull(form.oe_addition),
       dnp: form.dnp.trim() || null,
+      altura: form.altura.trim() || null,
       total, down_payment: numberOrNull(form.down_payment) || 0,
       payment_method: form.payment_method || null,
       vendedor_id: vendedorId,
@@ -379,7 +381,7 @@ export default function OrdensPage() {
       : supabase.from('service_orders').insert(body).select().single());
 
     // Grava tirando só as colunas do laboratório que o banco ainda não tem.
-    const { result, droppedColumns } = await writeDroppingMissingLabColumns(write, payload);
+    const { result, droppedColumns } = await writeDroppingMissingColumns(write, payload);
     if (result.error || !result.data) {
       setSaving(false);
       const msg = /row-level security|permission|jwt|401/i.test(result.error?.message || '')
@@ -418,7 +420,7 @@ export default function OrdensPage() {
       ...clientSync,
       saleStatus === 'fechado' ? 'Entregue → lançada no faturamento.' : saleStatus === 'negociacao' ? 'Vai pro faturamento quando você marcar como Entregue.' : null,
       saleError ? `(aviso: não foi possível sincronizar com Orçamentos — ${saleError.message})` : null,
-      missingLabColumnsNotice(droppedColumns) || null,
+      missingColumnsNotice(droppedColumns) || null,
     ].filter(Boolean).join(' '));
     await loadData();
   };
@@ -703,7 +705,9 @@ export default function OrdensPage() {
                 </div>
               </div>
               <div className={styles.formGrid} style={{ marginTop: 12 }}>
-                <label>DNP<input value={form.dnp} onChange={(event) => setForm({ ...form, dnp: event.target.value })} placeholder="Ex: 31/31" /></label>
+                <label>DNP<input maxLength={60} value={form.dnp} onChange={(event) => setForm({ ...form, dnp: event.target.value })} placeholder="Ex: 31/31" /></label>
+                <label>Altura (montagem)<input maxLength={60} value={form.altura} onChange={(event) => setForm({ ...form, altura: event.target.value })} placeholder="Ex: 21/21" /></label>
+                <p className={styles.helper} style={{ gridColumn: '1 / -1', margin: 0 }}>A altura é medida em mm, do centro da pupila até a borda de baixo da lente. É o que o laboratório pede para montar multifocal e progressiva.</p>
               </div>
             </section>
 
@@ -780,7 +784,7 @@ export default function OrdensPage() {
                     <div><strong>OE</strong><span>{g(order.oe_sphere)}</span><span>{g(order.oe_cylinder)}</span><span>{g(order.oe_axis)}</span><span>{g(order.oe_addition)}</span></div>
                   </div>
                 ) : <p className={styles.helper}>Grau não informado.</p>}
-                <p className={styles.helper} style={{ marginTop: 10 }}>DNP: {order.dnp || '—'}</p>
+                <p className={styles.helper} style={{ marginTop: 10 }}>DNP: {order.dnp || '—'} · Altura: {order.altura || '—'}</p>
               </section>
 
               <section className={styles.detailSection}>

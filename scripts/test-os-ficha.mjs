@@ -61,6 +61,7 @@ const ORDEM = {
   rg: 'MG-14.222.333',
   created_at: '2026-08-22T13:40:00Z',
   dnp: '31/30',
+  altura: '21/21',
   od_sphere: -1.5, od_cylinder: -0.75, od_axis: 180, od_addition: null,
   oe_sphere: -1.25, oe_cylinder: -0.5, oe_axis: 175, oe_addition: null,
 };
@@ -115,14 +116,19 @@ const HOJE = '2026-08-22';
     patch.whatsapp === undefined && patch.secondary_phone === '64974003830', JSON.stringify(patch));
 }
 
-// 5. Sem grau nenhum, a O.S. não inventa receita na ficha.
+// 5. A altura de montagem chega na ficha junto com o grau.
 {
-  const semGrau = {
+  const receita = prescriptionFromOrder('cliente-1', ORDEM, HOJE);
+  check('altura da O.S. fica anotada na receita', receita.notes.includes('Altura: 21/21'), receita.notes);
+  const soAltura = {
     ...ORDEM, dnp: null,
     od_sphere: null, od_cylinder: null, od_axis: null, od_addition: null,
     oe_sphere: null, oe_cylinder: null, oe_axis: null, oe_addition: null,
   };
-  check('O.S. sem grau não cria receita', prescriptionFromOrder('cliente-1', semGrau, HOJE) === null);
+  check('O.S. só com altura ainda vira receita', prescriptionFromOrder('cliente-1', soAltura, HOJE) !== null);
+  const semNada = { ...soAltura, altura: null };
+  check('O.S. sem grau, sem DNP e sem altura não vira receita',
+    prescriptionFromOrder('cliente-1', semNada, HOJE) === null);
 }
 
 // 6. DNP escrita de outros jeitos.
@@ -132,6 +138,8 @@ const HOJE = '2026-08-22';
   const receita = prescriptionFromOrder('cliente-1', { ...ORDEM, dnp: '62' }, HOJE);
   check('DNP que não dá para separar fica anotada na receita',
     receita.notes.includes('DNP anotada: 62'), receita.notes);
+  check('DNP anotada e altura convivem na mesma observação',
+    receita.notes.includes('DNP anotada: 62') && receita.notes.includes('Altura: 21/21'), receita.notes);
   check('DNP "31,5/30,5" com vírgula é entendida',
     parseDnp('31,5/30,5').right === 31.5 && parseDnp('31,5/30,5').left === 30.5);
 }
